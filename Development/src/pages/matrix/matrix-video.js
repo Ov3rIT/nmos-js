@@ -12,15 +12,13 @@ const MatrixVideo = ({ data }) => {
     const allReceivers = normalize(data?.receivers);
     const allDevices = normalize(data?.devices);
 
-    // Funzione per capire il tipo di flusso (Video, Audio, Data)
     const getBaseType = item => {
-        const format = (item?.format || item?.caps?.format || '').toLowerCase();
+        const format = (item?.format || '').toLowerCase();
         if (format.includes('video')) return 'video';
         if (format.includes('audio')) return 'audio';
         return 'ancillary';
     };
 
-    // Mappatura connessioni attive (IS-05)
     const currentConnections = {};
     allReceivers.forEach(r => {
         if (r.subscription?.sender_id) {
@@ -30,63 +28,54 @@ const MatrixVideo = ({ data }) => {
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
         if (isConnected) {
-            console.log('Disconnecting...');
+            // Per disconnettere, nmos-js di solito vuole null o un oggetto vuoto
             makeConnection(receiver, null);
             return;
         }
 
-        // --- CONTROLLO DI SICUREZZA (Patch dello stesso tipo) ---
-        const sType = getBaseType(sender);
-        const rType = getBaseType(receiver);
-
-        if (sType !== rType) {
-            alert(
-                `Errore: Impossibile patchare un flusso ${sType.toUpperCase()} su un ingresso ${rType.toUpperCase()}.`
-            );
+        // Controllo coerenza tipo (Audio con Audio, ecc.)
+        if (getBaseType(sender) !== getBaseType(receiver)) {
+            alert('Errore: I tipi di segnale non corrispondono!');
             return;
         }
 
-        // --- TENTATIVO DI PATCH ---
+        // --- FIX ENDPOINT ---
+        // Se l'endpoint manca nel receiver, cerchiamo di recuperarlo dal Device
+        let finalReceiver = { ...receiver };
+        if (
+            !finalReceiver.control_endpoints ||
+            finalReceiver.control_endpoints.length === 0
+        ) {
+            const parentDevice = allDevices.find(
+                d => d.id === receiver.device_id
+            );
+            if (parentDevice && parentDevice.control_endpoints) {
+                finalReceiver.control_endpoints =
+                    parentDevice.control_endpoints;
+            }
+        }
+
         console.log(
-            `Connecting ${sender.label} to ${receiver.label} (${sType})`
+            'Tentativo di patch su endpoint:',
+            finalReceiver.control_endpoints
         );
 
         try {
-            // Passiamo l'oggetto completo. Se continua a dare "Invalid Endpoint",
-            // il problema è nel Registry URL configurato nell'App.
-            makeConnection(receiver, sender);
-        } catch (err) {
-            console.error('Errore durante la chiamata IS-05:', err);
+            // Eseguiamo la connessione
+            makeConnection(finalReceiver, sender);
+        } catch (e) {
+            console.error('Errore chiamata makeConnection:', e);
         }
     };
 
     return (
-        <div className="matrix-page-wrapper">
-            {/* Legenda rapida */}
-            <div
-                style={{
-                    padding: '10px',
-                    fontSize: '12px',
-                    background: '#eee',
-                    borderBottom: '1px solid #ccc',
-                }}
-            >
-                <strong>Patch Status:</strong>{' '}
-                {Object.keys(currentConnections).length} active connections
-                <span style={{ marginLeft: '20px' }}>
-                    {' '}
-                    (Check labels to ensure matching formats)
-                </span>
-            </div>
-
-            <MatrixBase
-                devices={allDevices}
-                senders={allSenders}
-                receivers={allReceivers}
-                connections={currentConnections}
-                onConnect={handleToggleConnection}
-            />
-        </div>
+        <MatrixBase
+            devices={allDevices}
+            senders={allSenders}
+            receivers={allReceivers}
+            connections={currentConnections}
+            onConnect={handleToggleConnection}
+        />
     );
 };
 
