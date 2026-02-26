@@ -7,32 +7,23 @@ const MatrixBase = ({
     connections = {},
     onConnect,
 }) => {
-    // Fallback: se non ci sono canali, mostriamo un messaggio
-    if (senders.length === 0 && receivers.length === 0) {
-        return (
-            <div style={{ color: '#666', padding: '20px' }}>
-                No streams found for this category.
-            </div>
-        );
-    }
-
-    // Funzione migliorata per raggruppare: se il device non esiste, usiamo un placeholder
+    // Funzione di raggruppamento robusta
     const getGrouped = items => {
         const groups = {};
+
         items.forEach(item => {
-            const dId = item.device_id || 'unknown';
-            if (!groups[dId]) {
-                const dev = devices.find(d => d.id === dId);
-                groups[dId] = {
-                    label: dev
-                        ? dev.label
-                        : item.device_id
-                          ? `Device ${item.device_id.slice(0, 8)}`
-                          : 'Unknown Device',
+            // Cerchiamo il dispositivo associato
+            const dId = item.device_id;
+            const dev = devices.find(d => d.id === dId);
+            const groupKey = dId || 'unknown';
+
+            if (!groups[groupKey]) {
+                groups[groupKey] = {
+                    label: dev ? dev.label || dev.description : 'Other Sources',
                     channels: [],
                 };
             }
-            groups[dId].channels.push(item);
+            groups[groupKey].channels.push(item);
         });
         return Object.values(groups);
     };
@@ -40,10 +31,14 @@ const MatrixBase = ({
     const groupedSenders = getGrouped(senders);
     const groupedReceivers = getGrouped(receivers);
 
+    // Calcoliamo il numero totale di sender per il colspan delle righe receiver
+    const totalSenderCount = senders.length;
+
     return (
         <div className="dante-matrix-wrapper">
             <table className="dante-table">
                 <thead>
+                    {/* PRIMA RIGA: Nomi dei Dispositivi Sender */}
                     <tr>
                         <th className="corner-label" rowSpan="2">
                             RECEIVERS \ SENDERS
@@ -58,6 +53,7 @@ const MatrixBase = ({
                             </th>
                         ))}
                     </tr>
+                    {/* SECONDA RIGA: Nomi dei Canali Sender (Verticali) */}
                     <tr>
                         {groupedSenders
                             .flatMap(g => g.channels)
@@ -73,21 +69,19 @@ const MatrixBase = ({
                 <tbody>
                     {groupedReceivers.map((gr, i) => (
                         <React.Fragment key={i}>
+                            {/* Riga Intestazione Dispositivo Receiver */}
                             <tr className="device-row-header">
-                                <td
-                                    colSpan={
-                                        groupedSenders.flatMap(g => g.channels)
-                                            .length + 1
-                                    }
-                                >
+                                <td colSpan={totalSenderCount + 1}>
                                     {gr.label}
                                 </td>
                             </tr>
+                            {/* Righe dei Canali Receiver */}
                             {gr.channels.map(r => (
                                 <tr key={r.id}>
                                     <td className="h-header-channel">
                                         {r.label || r.id.slice(0, 8)}
                                     </td>
+                                    {/* Celle di incrocio */}
                                     {groupedSenders
                                         .flatMap(g => g.channels)
                                         .map(s => {

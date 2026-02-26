@@ -13,20 +13,10 @@ const MatrixVideo = ({ data }) => {
     const allReceivers = normalize(data?.receivers);
     const allDevices = normalize(data?.devices);
 
+    const videoSenders = allSenders; // Rimuovi il .filter per un momento
+    const videoReceivers = allReceivers; // Rimuovi il .filter per un momento
     // 2. Filtraggio Video
     // Cerchiamo 'video' nel campo format, ma gestiamo anche valori nulli o formati NMOS estesi
-    const videoSenders = allSenders.filter(
-        s => s && s.format && s.format.toLowerCase().includes('video')
-    );
-
-    const videoReceivers = allReceivers.filter(
-        r =>
-            r &&
-            ((r.format && r.format.toLowerCase().includes('video')) ||
-                (r.caps &&
-                    r.caps.format &&
-                    r.caps.format.toLowerCase().includes('video')))
-    );
 
     // 3. Mappatura Connessioni (IS-05)
     // Creiamo un oggetto dove la chiave è l'ID del receiver e il valore è l'ID del sender collegato
