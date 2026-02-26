@@ -12,6 +12,7 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import { makeStyles } from '@material-ui/styles';
 
 import {
+    SvgMatrix,
     DeviceIcon,
     FlowIcon,
     NodeIcon,
@@ -24,6 +25,7 @@ import {
 } from '../icons';
 
 import labelize from '../components/labelize';
+import SvgMatrix from '../icons/Matrix';
 
 const NavLinkRef = forwardRef((props, ref) => (
     <NavLink innerRef={ref} {...props} />
@@ -81,6 +83,7 @@ const CustomMenu = () => {
             <CustomMenuItem to={'/'} exact icon={<HomeIcon />} label={'Home'} />
             <CustomMenuItem to={'/settings'} icon={<SettingsIcon />} />
             <Divider />
+            <CustomMenuItem to={'/matrix'} icon={<SvgMatrix />} />
             <CustomMenuItem to={'/nodes'} icon={<NodeIcon />} />
             <CustomMenuItem to={'/devices'} icon={<DeviceIcon />} />
             <CustomMenuItem to={'/sources'} icon={<SourceIcon />} />

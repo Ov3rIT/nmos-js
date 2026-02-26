@@ -50,7 +50,7 @@ const AppAdmin = () => {
     }
     return (
         <Admin
-            title={get(CONFIG, 'title', 'nmos-js')}
+            title={get(CONFIG, 'title', 'CVE-NMOS')}
             dashboard={About}
             layout={AdminLayout}
             dataProvider={dataProvider}
