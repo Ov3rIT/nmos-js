@@ -27,7 +27,6 @@ import { QueryAPIsList, QueryAPIsShow } from './pages/queryapis';
 import Settings from './pages/settings';
 import dataProvider from './dataProvider';
 import authProvider from './authProvider';
-import { SendersList, ReceiversList } from './pages/matrix';
 
 const AdminAppBar = props => {
     const [useAuth] = useAuthContext();
