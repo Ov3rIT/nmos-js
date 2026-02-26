@@ -7,19 +7,19 @@ const MatrixBase = ({
     connections = {},
     onConnect,
 }) => {
-    // Funzione di raggruppamento robusta
+    // Funzione interna per raggruppare i canali sotto il nome del dispositivo (Node/Device)
     const getGrouped = items => {
         const groups = {};
-
         items.forEach(item => {
-            // Cerchiamo il dispositivo associato
             const dId = item.device_id;
             const dev = devices.find(d => d.id === dId);
             const groupKey = dId || 'unknown';
 
             if (!groups[groupKey]) {
                 groups[groupKey] = {
-                    label: dev ? dev.label || dev.description : 'Other Sources',
+                    label: dev
+                        ? dev.label || dev.description
+                        : 'Altri Dispositivi',
                     channels: [],
                 };
             }
@@ -31,14 +31,22 @@ const MatrixBase = ({
     const groupedSenders = getGrouped(senders);
     const groupedReceivers = getGrouped(receivers);
 
-    // Calcoliamo il numero totale di sender per il colspan delle righe receiver
+    // Conta quanti sender ci sono in totale per impostare la larghezza delle righe header
     const totalSenderCount = senders.length;
+
+    // Helper per determinare il tipo di flusso (per i colori dei quadratini)
+    const getFlowType = item => {
+        const format = (item?.format || '').toLowerCase();
+        if (format.includes('video')) return 'video';
+        if (format.includes('audio')) return 'audio';
+        return 'ancillary';
+    };
 
     return (
         <div className="dante-matrix-wrapper">
             <table className="dante-table">
                 <thead>
-                    {/* PRIMA RIGA: Nomi dei Dispositivi Sender */}
+                    {/* RIGA 1: Nomi dei Dispositivi Sender (Colonne) */}
                     <tr>
                         <th className="corner-label" rowSpan="2">
                             RECEIVERS \ SENDERS
@@ -53,12 +61,16 @@ const MatrixBase = ({
                             </th>
                         ))}
                     </tr>
-                    {/* SECONDA RIGA: Nomi dei Canali Sender (Verticali) */}
+                    {/* RIGA 2: Nomi dei singoli flussi Sender (Verticali) */}
                     <tr>
                         {groupedSenders
                             .flatMap(g => g.channels)
                             .map(s => (
-                                <th key={s.id} className="v-header">
+                                <th
+                                    key={s.id}
+                                    className="v-header"
+                                    title={s.label}
+                                >
                                     <div className="v-text">
                                         {s.label || s.id.slice(0, 8)}
                                     </div>
@@ -69,24 +81,29 @@ const MatrixBase = ({
                 <tbody>
                     {groupedReceivers.map((gr, i) => (
                         <React.Fragment key={i}>
-                            {/* Riga Intestazione Dispositivo Receiver */}
+                            {/* Header del Dispositivo Receiver (Riga orizzontale) */}
                             <tr className="device-row-header">
                                 <td colSpan={totalSenderCount + 1}>
                                     {gr.label}
                                 </td>
                             </tr>
-                            {/* Righe dei Canali Receiver */}
+                            {/* Righe dei flussi Receiver */}
                             {gr.channels.map(r => (
                                 <tr key={r.id}>
-                                    <td className="h-header-channel">
+                                    <td
+                                        className="h-header-channel"
+                                        title={r.label}
+                                    >
                                         {r.label || r.id.slice(0, 8)}
                                     </td>
-                                    {/* Celle di incrocio */}
+                                    {/* Celle di incrocio per il Patch */}
                                     {groupedSenders
                                         .flatMap(g => g.channels)
                                         .map(s => {
                                             const isConnected =
                                                 connections[r.id] === s.id;
+                                            const flowType = getFlowType(s);
+
                                             return (
                                                 <td
                                                     key={`${r.id}-${s.id}`}
@@ -98,9 +115,12 @@ const MatrixBase = ({
                                                             isConnected
                                                         )
                                                     }
+                                                    title={`${s.label} -> ${r.label}`}
                                                 >
                                                     {isConnected && (
-                                                        <div className="dante-check" />
+                                                        <div
+                                                            className={`dante-check status-${flowType}`}
+                                                        />
                                                     )}
                                                 </td>
                                             );

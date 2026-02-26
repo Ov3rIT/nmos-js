@@ -2,7 +2,7 @@ import React from 'react';
 import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
-const MatrixMain = ({ data }) => {
+const MatrixVideo = ({ data }) => {
     const normalize = items => {
         if (!items) return [];
         return Array.isArray(items) ? items : Object.values(items);
@@ -12,7 +12,15 @@ const MatrixMain = ({ data }) => {
     const allReceivers = normalize(data?.receivers);
     const allDevices = normalize(data?.devices);
 
-    // Mappatura connessioni esistenti (IS-05)
+    // Funzione per capire il tipo di flusso (Video, Audio, Data)
+    const getBaseType = item => {
+        const format = (item?.format || item?.caps?.format || '').toLowerCase();
+        if (format.includes('video')) return 'video';
+        if (format.includes('audio')) return 'audio';
+        return 'ancillary';
+    };
+
+    // Mappatura connessioni attive (IS-05)
     const currentConnections = {};
     allReceivers.forEach(r => {
         if (r.subscription?.sender_id) {
@@ -22,44 +30,55 @@ const MatrixMain = ({ data }) => {
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
         if (isConnected) {
+            console.log('Disconnecting...');
             makeConnection(receiver, null);
             return;
         }
 
-        // --- CONTROLLO DI SICUREZZA (Punto 2) ---
-        // Verifichiamo che i formati coincidano
-        const sFormat = (sender.format || '').toLowerCase();
-        const rFormat = (
-            receiver.format ||
-            receiver.caps?.format ||
-            ''
-        ).toLowerCase();
+        // --- CONTROLLO DI SICUREZZA (Patch dello stesso tipo) ---
+        const sType = getBaseType(sender);
+        const rType = getBaseType(receiver);
 
-        // Estraiamo il tipo base (video, audio, o data/ancillary)
-        const getBaseType = f => {
-            if (f.includes('video')) return 'video';
-            if (f.includes('audio')) return 'audio';
-            return 'ancillary';
-        };
-
-        if (getBaseType(sFormat) !== getBaseType(rFormat)) {
+        if (sType !== rType) {
             alert(
-                `Errore di Patch: Impossibile collegare un flusso ${getBaseType(sFormat)} a un ingresso ${getBaseType(rFormat)}.`
+                `Errore: Impossibile patchare un flusso ${sType.toUpperCase()} su un ingresso ${rType.toUpperCase()}.`
             );
             return;
         }
 
-        makeConnection(receiver, sender);
+        // --- TENTATIVO DI PATCH ---
+        console.log(
+            `Connecting ${sender.label} to ${receiver.label} (${sType})`
+        );
+
+        try {
+            // Passiamo l'oggetto completo. Se continua a dare "Invalid Endpoint",
+            // il problema è nel Registry URL configurato nell'App.
+            makeConnection(receiver, sender);
+        } catch (err) {
+            console.error('Errore durante la chiamata IS-05:', err);
+        }
     };
 
     return (
         <div className="matrix-page-wrapper">
-            <div className="matrix-info-bar">
-                <span>
-                    🟢 Connessioni attive:{' '}
-                    {Object.keys(currentConnections).length}
+            {/* Legenda rapida */}
+            <div
+                style={{
+                    padding: '10px',
+                    fontSize: '12px',
+                    background: '#eee',
+                    borderBottom: '1px solid #ccc',
+                }}
+            >
+                <strong>Patch Status:</strong>{' '}
+                {Object.keys(currentConnections).length} active connections
+                <span style={{ marginLeft: '20px' }}>
+                    {' '}
+                    (Check labels to ensure matching formats)
                 </span>
             </div>
+
             <MatrixBase
                 devices={allDevices}
                 senders={allSenders}
@@ -71,4 +90,4 @@ const MatrixMain = ({ data }) => {
     );
 };
 
-export default MatrixMain;
+export default MatrixVideo;
