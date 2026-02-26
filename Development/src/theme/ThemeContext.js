@@ -13,7 +13,7 @@ export const ThemeContext = React.createContext({
 export const AppThemeProvider = ({ children }) => {
     const themePalette = get(CONFIG, 'palette', {
         primary: {
-            main: 'rgb(0,148,132)',
+            main: 'rgb(2, 112, 101)',
             contrastText: '#fff',
         },
         secondary: {
