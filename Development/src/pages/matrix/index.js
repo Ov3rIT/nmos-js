@@ -1,22 +1,46 @@
-import React, { useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { crudGetList } from 'react-admin'; // Azione per caricare dati in Redux
 import MatrixVideo from './matrix-video';
 import MatrixAudio from './matrix-audio';
 import './matrix-style.css';
 
 const MatrixPage = () => {
     const [activeTab, setActiveTab] = useState('video');
+    const dispatch = useDispatch();
 
-    // Accediamo direttamente allo stato globale di React-Admin
-    // In questo fork, i dati sono solitamente sotto admin.resources.[nome].data
+    // Leggiamo lo stato di Redux
     const resources = useSelector(state => state.admin.resources);
 
+    // Se i dati mancano, forziamo il caricamento
+    useEffect(() => {
+        const loadIfMissing = name => {
+            if (
+                !resources[name] ||
+                !resources[name].data ||
+                Object.keys(resources[name].data).length === 0
+            ) {
+                console.log(`Caricamento forzato risorsa: ${name}`);
+                dispatch(
+                    crudGetList(
+                        name,
+                        { page: 1, perPage: 1000 },
+                        { field: 'id', order: 'ASC' },
+                        {}
+                    )
+                );
+            }
+        };
+
+        loadIfMissing('sender');
+        loadIfMissing('receiver');
+        loadIfMissing('device');
+    }, [dispatch, resources]);
+
     const nmosData = useMemo(() => {
-        const extractData = resourceName => {
-            const resource = resources[resourceName];
-            if (!resource || !resource.data) return [];
-            // Trasformiamo l'oggetto { id: {obj} } in array [ {obj} ]
-            return Object.values(resource.data);
+        const extractData = name => {
+            const res = resources[name];
+            return res && res.data ? Object.values(res.data) : [];
         };
 
         return {
@@ -26,15 +50,15 @@ const MatrixPage = () => {
         };
     }, [resources]);
 
-    // Se Redux è ancora vuoto (es. primo caricamento)
-    if (nmosData.senders.length === 0 && nmosData.receivers.length === 0) {
+    // Mostriamo lo spinner solo se non c'è proprio nulla dopo il tentativo di caricamento
+    const isReady =
+        nmosData.senders.length > 0 || nmosData.receivers.length > 0;
+
+    if (!isReady) {
         return (
-            <div className="loading-state">
-                <h3>Connecting to NMOS Store...</h3>
-                <p>
-                    Se vedi questo messaggio a lungo, apri prima la lista
-                    Senders/Receivers per caricare i dati.
-                </p>
+            <div className="loading-container">
+                <div className="spinner"></div>
+                <p>Sincronizzazione con il Registry NMOS in corso...</p>
             </div>
         );
     }
@@ -47,15 +71,13 @@ const MatrixPage = () => {
                         className={`tab-button ${activeTab === 'video' ? 'active' : ''}`}
                         onClick={() => setActiveTab('video')}
                     >
-                        {' '}
-                        VIDEO{' '}
+                        VIDEO
                     </button>
                     <button
                         className={`tab-button ${activeTab === 'audio' ? 'active' : ''}`}
                         onClick={() => setActiveTab('audio')}
                     >
-                        {' '}
-                        AUDIO{' '}
+                        AUDIO
                     </button>
                 </div>
             </div>
