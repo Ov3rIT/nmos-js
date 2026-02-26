@@ -1,9 +1,9 @@
 {
-    "title": "nmos-js",
-    "about": "An NMOS Client",
+    "title": "CVE NMOS",
+    "about": "NMOS Client",
     "palette": {
         "primary": {
-            "main": "rgb(45,117,199)",
+            "main": "rgb(0,148,132)",
             "contrastText": "#fff"
         },
         "secondary": {
