@@ -25,7 +25,6 @@ import {
 } from '../icons';
 
 import labelize from '../components/labelize';
-import SvgMatrix from '../icons/Matrix';
 
 const NavLinkRef = forwardRef((props, ref) => (
     <NavLink innerRef={ref} {...props} />
