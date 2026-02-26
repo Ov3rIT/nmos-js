@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useGetList } from 'react-admin';
+import { useSelector } from 'react-redux';
 import MatrixVideo from './matrix-video';
 import MatrixAudio from './matrix-audio';
 import './matrix-style.css';
@@ -7,42 +7,35 @@ import './matrix-style.css';
 const MatrixPage = () => {
     const [activeTab, setActiveTab] = useState('video');
 
-    // Proviamo a caricare le risorse.
-    // Se 'sender' non funziona, prova a cambiare manualmente in 'senders' qui sotto.
-    const senderRes = useGetList('sender', {
-        pagination: { page: 1, perPage: 1000 },
-    });
-    const receiverRes = useGetList('receiver', {
-        pagination: { page: 1, perPage: 1000 },
-    });
-    const deviceRes = useGetList('device', {
-        pagination: { page: 1, perPage: 1000 },
-    });
+    // Accediamo direttamente allo stato globale di React-Admin
+    // In questo fork, i dati sono solitamente sotto admin.resources.[nome].data
+    const resources = useSelector(state => state.admin.resources);
 
     const nmosData = useMemo(() => {
-        const extract = res => {
-            // Logghiamo cosa arriva effettivamente da React-Admin per ogni risorsa
-            console.log(`Resource ${activeTab} debug:`, res);
-
-            if (res.data && Array.isArray(res.data)) return res.data;
-            if (res.data && typeof res.data === 'object')
-                return Object.values(res.data);
-            return [];
+        const extractData = resourceName => {
+            const resource = resources[resourceName];
+            if (!resource || !resource.data) return [];
+            // Trasformiamo l'oggetto { id: {obj} } in array [ {obj} ]
+            return Object.values(resource.data);
         };
 
         return {
-            senders: extract(senderRes),
-            receivers: extract(receiverRes),
-            devices: extract(deviceRes),
+            senders: extractData('sender'),
+            receivers: extractData('receiver'),
+            devices: extractData('device'),
         };
-    }, [senderRes, receiverRes, deviceRes, activeTab]);
+    }, [resources]);
 
-    const isLoading =
-        senderRes.isLoading || receiverRes.isLoading || deviceRes.isLoading;
-
-    if (isLoading) {
+    // Se Redux è ancora vuoto (es. primo caricamento)
+    if (nmosData.senders.length === 0 && nmosData.receivers.length === 0) {
         return (
-            <div className="loading-state">Connecting to NMOS Registry...</div>
+            <div className="loading-state">
+                <h3>Connecting to NMOS Store...</h3>
+                <p>
+                    Se vedi questo messaggio a lungo, apri prima la lista
+                    Senders/Receivers per caricare i dati.
+                </p>
+            </div>
         );
     }
 
@@ -54,31 +47,19 @@ const MatrixPage = () => {
                         className={`tab-button ${activeTab === 'video' ? 'active' : ''}`}
                         onClick={() => setActiveTab('video')}
                     >
-                        VIDEO
+                        {' '}
+                        VIDEO{' '}
                     </button>
                     <button
                         className={`tab-button ${activeTab === 'audio' ? 'active' : ''}`}
                         onClick={() => setActiveTab('audio')}
                     >
-                        AUDIO
+                        {' '}
+                        AUDIO{' '}
                     </button>
                 </div>
             </div>
             <div className="matrix-content-area">
-                {/* Se gli array sono vuoti, mostriamo un debug a schermo */}
-                {nmosData.senders.length === 0 && (
-                    <div
-                        style={{
-                            padding: '20px',
-                            color: '#d32f2f',
-                            background: '#ffcdd2',
-                            margin: '10px',
-                        }}
-                    >
-                        <strong>DEBUG:</strong> Nessun Sender trovato. Controlla
-                        la console (F12) per vedere il formato dei dati.
-                    </div>
-                )}
                 {activeTab === 'video' ? (
                     <MatrixVideo data={nmosData} />
                 ) : (
