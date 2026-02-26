@@ -27,7 +27,6 @@ import { QueryAPIsList, QueryAPIsShow } from './pages/queryapis';
 import Settings from './pages/settings';
 import dataProvider from './dataProvider';
 import authProvider from './authProvider';
-import MatrixBase from './pages/matrix/MatrixBase';
 import MatrixPage from './pages/matrix';
 import SvgMatrix from './icons/Matrix';
 
