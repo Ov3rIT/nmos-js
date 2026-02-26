@@ -1,0 +1,128 @@
+.dante-matrix-wrapper {
+    background-color: #1a1a1a;
+    color: #eee;
+    padding: 10px;
+    overflow: both;
+}
+
+.dante-table {
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+/* Intestazioni Dispositivi */
+.device-header-v {
+    border: 1px solid #444;
+    background-color: #333;
+    padding: 5px;
+    color: #fff;
+}
+
+.device-row-header {
+    background-color: #2a2a2a;
+    color: #aaa;
+    font-weight: bold;
+    text-transform: uppercase;
+    border: 1px solid #444;
+}
+
+/* Canali Verticali */
+.v-header {
+    height: 120px;
+    border: 1px solid #333;
+    vertical-align: bottom;
+    background-color: #1e1e1e;
+}
+
+.v-text {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    padding: 5px;
+    white-space: nowrap;
+}
+
+/* Canali Orizzontali */
+.h-header-channel {
+    padding: 4px 10px;
+    border: 1px solid #333;
+    text-align: right;
+    background-color: #222;
+}
+
+/* Celle Matrice */
+.matrix-cell {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #333;
+    background-color: #111;
+    cursor: pointer;
+    position: relative;
+}
+
+.matrix-cell:hover {
+    background-color: #444;
+}
+
+.matrix-cell.active {
+    background-color: #004d00; /* Sfondo scuro per connessione */
+}
+
+/* Il quadratino verde Dante */
+.dante-check {
+    width: 14px;
+    height: 14px;
+    background-color: #32cd32;
+    margin: auto;
+    border-radius: 2px;
+    box-shadow: 0 0 5px #00ff00;
+}
+
+.matrix-container-main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #121212;
+}
+
+.matrix-tabs-bar {
+    display: flex;
+    background-color: #222;
+    padding: 10px 10px 0 10px;
+    border-bottom: 2px solid #333;
+}
+
+.tab-button {
+    background: #333;
+    border: 1px solid #444;
+    border-bottom: none;
+    color: #aaa;
+    padding: 8px 20px;
+    margin-right: 4px;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.tab-button:hover {
+    background: #444;
+    color: #fff;
+}
+
+.tab-button.active {
+    background: #1a1a1a;
+    color: #32cd32; /* Verde tipico */
+    border-top: 2px solid #32cd32;
+}
+
+.matrix-content-area {
+    flex-grow: 1;
+    overflow: auto;
+}
+
+.loading-state {
+    color: #666;
+    text-align: center;
+    padding-top: 50px;
+    font-style: italic;
+}

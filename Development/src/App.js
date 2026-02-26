@@ -27,6 +27,8 @@ import { QueryAPIsList, QueryAPIsShow } from './pages/queryapis';
 import Settings from './pages/settings';
 import dataProvider from './dataProvider';
 import authProvider from './authProvider';
+import MatrixBase from './pages/matrix/MatrixBase';
+import MatrixPage from './pages/matrix';
 
 const AdminAppBar = props => {
     const [useAuth] = useAuthContext();
@@ -58,7 +60,7 @@ const AppAdmin = () => {
             authProvider={useAuth ? authProvider : null}
         >
             <Resource name="Settings" list={Settings} />
-            <Resource name="matrix" list={SendersList} />
+            <Resource name="matrix" list={MatrixPage} />
             <Resource name="nodes" list={NodesList} show={NodesShow} />
             <Resource name="devices" list={DevicesList} show={DevicesShow} />
             <Resource name="sources" list={SourcesList} show={SourcesShow} />
