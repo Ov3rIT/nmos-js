@@ -1,128 +1,157 @@
+/* Container Principale */
+.matrix-container-main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f0f0f0; /* Grigio chiaro Dante */
+    color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Tabs di Navigazione */
+.matrix-header {
+    background-color: #e0e0e0;
+    border-bottom: 1px solid #ccc;
+    padding: 10px 10px 0 10px;
+}
+
+.matrix-tabs-bar {
+    display: flex;
+    gap: 2px;
+}
+
+.tab-button {
+    background: #d1d1d1;
+    border: 1px solid #b0b0b0;
+    border-bottom: none;
+    color: #444;
+    padding: 8px 25px;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.tab-button.active {
+    background: #f0f0f0;
+    color: #000;
+    border-top: 3px solid #32cd32; /* Linea verde Dante */
+    padding-top: 6px;
+}
+
+/* Wrapper Tabella */
 .dante-matrix-wrapper {
-    background-color: #1a1a1a;
-    color: #eee;
-    padding: 10px;
-    overflow: both;
+    background-color: #f0f0f0;
+    padding: 20px;
+    overflow: auto;
+    flex-grow: 1;
 }
 
 .dante-table {
     border-collapse: collapse;
-    font-size: 11px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Intestazioni Dispositivi */
-.device-header-v {
-    border: 1px solid #444;
-    background-color: #333;
-    padding: 5px;
-    color: #fff;
+/* Intestazioni Dispositivi (Orizzontali e Verticali) */
+.device-header-v,
+.device-row-header {
+    background-color: #e8e8e8;
+    color: #222;
+    font-weight: bold;
+    border: 1px solid #ccc;
+    font-size: 12px;
+    padding: 6px;
+    text-align: center;
 }
 
 .device-row-header {
-    background-color: #2a2a2a;
-    color: #aaa;
-    font-weight: bold;
-    text-transform: uppercase;
-    border: 1px solid #444;
+    text-align: left;
+    padding-left: 15px;
+    background-color: #f5f5f5;
 }
 
-/* Canali Verticali */
+/* Etichette Canali Sender (Verticali) */
 .v-header {
-    height: 120px;
-    border: 1px solid #333;
+    height: 140px;
+    min-width: 32px;
+    border: 1px solid #ccc;
     vertical-align: bottom;
-    background-color: #1e1e1e;
+    background-color: #fafafa;
 }
 
 .v-text {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
-    padding: 5px;
+    padding: 8px 5px;
+    white-space: nowrap;
+    font-size: 11px;
+    color: #444;
+}
+
+/* Etichette Canali Receiver (Orizzontali) */
+.h-header-channel {
+    padding: 6px 15px;
+    border: 1px solid #ccc;
+    text-align: right;
+    background-color: #fafafa;
+    font-size: 11px;
+    color: #444;
     white-space: nowrap;
 }
 
-/* Canali Orizzontali */
-.h-header-channel {
-    padding: 4px 10px;
-    border: 1px solid #333;
-    text-align: right;
-    background-color: #222;
-}
-
-/* Celle Matrice */
+/* Celle della Matrice */
 .matrix-cell {
-    width: 24px;
-    height: 24px;
-    border: 1px solid #333;
-    background-color: #111;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #ddd;
+    background-color: #fff;
     cursor: pointer;
-    position: relative;
+    transition: background-color 0.1s;
 }
 
 .matrix-cell:hover {
-    background-color: #444;
+    background-color: #eefbee; /* Feedback hover leggero verde */
 }
 
+/* Lo "Snap" della connessione (Il quadratino verde) */
 .matrix-cell.active {
-    background-color: #004d00; /* Sfondo scuro per connessione */
+    background-color: #ffffff; /* Sfondo cella rimane bianco */
 }
 
-/* Il quadratino verde Dante */
 .dante-check {
-    width: 14px;
-    height: 14px;
-    background-color: #32cd32;
+    width: 16px;
+    height: 16px;
+    background-color: #32cd32; /* Verde brillante Dante */
     margin: auto;
     border-radius: 2px;
-    box-shadow: 0 0 5px #00ff00;
+    border: 1px solid #28a428;
 }
 
-.matrix-container-main {
+/* Etichetta Angolare */
+.corner-label {
+    background-color: #e8e8e8;
+    border: 1px solid #ccc;
+    color: #777;
+    font-size: 9px;
+    padding: 5px;
+    text-transform: uppercase;
+}
+
+/* Footer di stato */
+.matrix-footer {
+    background-color: #e0e0e0;
+    padding: 5px 15px;
+    font-size: 11px;
+    color: #555;
+    border-top: 1px solid #ccc;
     display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background-color: #121212;
-}
-
-.matrix-tabs-bar {
-    display: flex;
-    background-color: #222;
-    padding: 10px 10px 0 10px;
-    border-bottom: 2px solid #333;
-}
-
-.tab-button {
-    background: #333;
-    border: 1px solid #444;
-    border-bottom: none;
-    color: #aaa;
-    padding: 8px 20px;
-    margin-right: 4px;
-    cursor: pointer;
-    border-radius: 4px 4px 0 0;
-    font-weight: bold;
-    transition: all 0.2s;
-}
-
-.tab-button:hover {
-    background: #444;
-    color: #fff;
-}
-
-.tab-button.active {
-    background: #1a1a1a;
-    color: #32cd32; /* Verde tipico */
-    border-top: 2px solid #32cd32;
-}
-
-.matrix-content-area {
-    flex-grow: 1;
-    overflow: auto;
+    gap: 20px;
 }
 
 .loading-state {
-    color: #666;
+    padding: 50px;
     text-align: center;
-    padding-top: 50px;
-    font-style: italic;
+    color: #666;
+    background: #f0f0f0;
 }

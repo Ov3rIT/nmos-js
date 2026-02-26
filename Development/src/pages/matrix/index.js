@@ -7,41 +7,40 @@ import './matrix-style.css';
 const MatrixPage = () => {
     const [activeTab, setActiveTab] = useState('video');
 
-    // Recupero dati IS-04
-    const { data: sendersData, isLoading: loadingS } = useGetList('senders', {
+    // Nel tuo fork le risorse si chiamano al singolare: 'sender', 'receiver', 'device'
+    const { data: sendersMap, isLoading: loadingS } = useGetList('sender', {
         pagination: { page: 1, perPage: 1000 },
     });
-    const { data: receiversData, isLoading: loadingR } = useGetList(
-        'receivers',
-        {
-            pagination: { page: 1, perPage: 1000 },
-        }
-    );
-    const { data: devicesData, isLoading: loadingD } = useGetList('devices', {
+    const { data: receiversMap, isLoading: loadingR } = useGetList('receiver', {
+        pagination: { page: 1, perPage: 1000 },
+    });
+    const { data: devicesMap, isLoading: loadingD } = useGetList('device', {
         pagination: { page: 1, perPage: 1000 },
     });
 
-    // Usiamo useMemo per trasformare i dati solo quando cambiano
     const nmosData = useMemo(() => {
-        const sanitize = data => {
+        // Funzione per estrarre l'array di oggetti dai dati di react-admin
+        const getArray = data => {
             if (!data) return [];
-            // Se è già un array lo restituisce, altrimenti prova a estrarre i valori se è un oggetto
             return Array.isArray(data) ? data : Object.values(data);
         };
 
         return {
-            senders: sanitize(sendersData),
-            receivers: sanitize(receiversData),
-            devices: sanitize(devicesData),
+            senders: getArray(sendersMap),
+            receivers: getArray(receiversMap),
+            devices: getArray(devicesMap),
         };
-    }, [sendersData, receiversData, devicesData]);
+    }, [sendersMap, receiversMap, devicesMap]);
 
     if (loadingS || loadingR || loadingD) {
-        return <div className="loading-state">Loading NMOS Data...</div>;
+        return <div className="loading-state">Loading NMOS Matrix...</div>;
     }
 
     return (
-        <div className="matrix-container-main">
+        <div
+            className="matrix-container-main"
+            style={{ backgroundColor: '#1a1a1a', height: '100vh' }}
+        >
             <div className="matrix-header">
                 <div className="matrix-tabs-bar">
                     <button
@@ -61,6 +60,12 @@ const MatrixPage = () => {
                 </div>
             </div>
             <div className="matrix-content-area">
+                {/* Debug temporaneo: se non vedi nulla, questo ti dirà se i dati esistono */}
+                {nmosData.senders.length === 0 && (
+                    <div style={{ color: 'orange', padding: '20px' }}>
+                        Warning: No Senders found in Registry.
+                    </div>
+                )}
                 {activeTab === 'video' ? (
                     <MatrixVideo data={nmosData} />
                 ) : (
