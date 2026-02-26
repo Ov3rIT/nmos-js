@@ -1,25 +1,44 @@
 import React from 'react';
 
 const MatrixBase = ({
-    devices,
-    senders,
-    receivers,
-    connections,
+    devices = [],
+    senders = [],
+    receivers = [],
+    connections = {},
     onConnect,
 }) => {
-    const groupedSenders = devices
-        .map(dev => ({
-            device: dev,
-            channels: senders.filter(s => s.device_id === dev.id),
-        }))
-        .filter(g => g.channels.length > 0);
+    // Fallback: se non ci sono canali, mostriamo un messaggio
+    if (senders.length === 0 && receivers.length === 0) {
+        return (
+            <div style={{ color: '#666', padding: '20px' }}>
+                No streams found for this category.
+            </div>
+        );
+    }
 
-    const groupedReceivers = devices
-        .map(dev => ({
-            device: dev,
-            channels: receivers.filter(r => r.device_id === dev.id),
-        }))
-        .filter(g => g.channels.length > 0);
+    // Funzione migliorata per raggruppare: se il device non esiste, usiamo un placeholder
+    const getGrouped = items => {
+        const groups = {};
+        items.forEach(item => {
+            const dId = item.device_id || 'unknown';
+            if (!groups[dId]) {
+                const dev = devices.find(d => d.id === dId);
+                groups[dId] = {
+                    label: dev
+                        ? dev.label
+                        : item.device_id
+                          ? `Device ${item.device_id.slice(0, 8)}`
+                          : 'Unknown Device',
+                    channels: [],
+                };
+            }
+            groups[dId].channels.push(item);
+        });
+        return Object.values(groups);
+    };
+
+    const groupedSenders = getGrouped(senders);
+    const groupedReceivers = getGrouped(receivers);
 
     return (
         <div className="dante-matrix-wrapper">
@@ -29,13 +48,13 @@ const MatrixBase = ({
                         <th className="corner-label" rowSpan="2">
                             RECEIVERS \ SENDERS
                         </th>
-                        {groupedSenders.map(g => (
+                        {groupedSenders.map((g, i) => (
                             <th
-                                key={g.device.id}
+                                key={i}
                                 colSpan={g.channels.length}
                                 className="device-header-v"
                             >
-                                {g.device.label}
+                                {g.label}
                             </th>
                         ))}
                     </tr>
@@ -44,14 +63,16 @@ const MatrixBase = ({
                             .flatMap(g => g.channels)
                             .map(s => (
                                 <th key={s.id} className="v-header">
-                                    <div className="v-text">{s.label}</div>
+                                    <div className="v-text">
+                                        {s.label || s.id.slice(0, 8)}
+                                    </div>
                                 </th>
                             ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {groupedReceivers.map(gr => (
-                        <React.Fragment key={gr.device.id}>
+                    {groupedReceivers.map((gr, i) => (
+                        <React.Fragment key={i}>
                             <tr className="device-row-header">
                                 <td
                                     colSpan={
@@ -59,13 +80,13 @@ const MatrixBase = ({
                                             .length + 1
                                     }
                                 >
-                                    {gr.device.label}
+                                    {gr.label}
                                 </td>
                             </tr>
                             {gr.channels.map(r => (
                                 <tr key={r.id}>
                                     <td className="h-header-channel">
-                                        {r.label}
+                                        {r.label || r.id.slice(0, 8)}
                                     </td>
                                     {groupedSenders
                                         .flatMap(g => g.channels)
@@ -100,4 +121,4 @@ const MatrixBase = ({
     );
 };
 
-export default MatrixBase; // <--- FONDAMENTALE
+export default MatrixBase;

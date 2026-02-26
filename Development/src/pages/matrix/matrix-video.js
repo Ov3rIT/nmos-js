@@ -1,16 +1,16 @@
 import React from 'react';
-import MatrixBase from './MatrixBase'; // IMPORT DEFAULT
+import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
 const MatrixVideo = ({ data }) => {
-    const { devices, senders, receivers } = data;
+    const { devices = [], senders = [], receivers = [] } = data;
 
-    // Dentro matrix-video.js
-    const videoSenders = (senders || []).filter(
-        s => s.format && s.format.includes('video')
+    // Filtro più permissivo: se il formato non è specificato, lo includiamo per debug
+    const videoSenders = senders.filter(
+        s => !s.format || s.format.toLowerCase().includes('video')
     );
-    const videoReceivers = (receivers || []).filter(
-        r => r.format && r.format.includes('video')
+    const videoReceivers = receivers.filter(
+        r => !r.format || r.format.toLowerCase().includes('video')
     );
 
     const currentConnections = {};
@@ -20,25 +20,17 @@ const MatrixVideo = ({ data }) => {
         }
     });
 
-    const handleConnect = (receiver, sender, isConnected) => {
-        if (isConnected) {
-            makeConnection(receiver, null);
-        } else {
-            makeConnection(receiver, sender);
-        }
-    };
-
     return (
-        <div className="matrix-page">
-            <MatrixBase
-                devices={devices}
-                senders={videoSenders}
-                receivers={videoReceivers}
-                connections={currentConnections}
-                onConnect={handleConnect}
-            />
-        </div>
+        <MatrixBase
+            devices={devices}
+            senders={videoSenders}
+            receivers={videoReceivers}
+            connections={currentConnections}
+            onConnect={(r, s, isConnected) => {
+                makeConnection(r, isConnected ? null : s);
+            }}
+        />
     );
 };
 
-export default MatrixVideo; // <--- FONDAMENTALE
+export default MatrixVideo;
