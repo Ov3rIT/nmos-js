@@ -2,16 +2,19 @@ import React from 'react';
 import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
+// In src/pages/matrix/matrix-video.js
 const MatrixVideo = ({ data }) => {
     const { devices = [], senders = [], receivers = [] } = data;
 
-    // Filtro più permissivo: se il formato non è specificato, lo includiamo per debug
-    const videoSenders = senders.filter(
-        s => !s.format || s.format.toLowerCase().includes('video')
-    );
-    const videoReceivers = receivers.filter(
-        r => !r.format || r.format.toLowerCase().includes('video')
-    );
+    // DEBUG: Commentiamo i filtri per vedere se appare qualcosa
+    const videoSenders = senders;
+    const videoReceivers = receivers;
+
+    // Log per vedere cosa arriva effettivamente nei dati
+    console.log('SENDERS:', senders);
+    console.log('DEVICES:', devices);
+
+    // ... resto del codice
 
     const currentConnections = {};
     videoReceivers.forEach(r => {
