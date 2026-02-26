@@ -155,3 +155,31 @@
     color: #666;
     background: #f0f0f0;
 }
+
+/* Evidenzia la cella attiva con un colore più forte */
+.matrix-cell.active {
+    background-color: #e6ffed !important;
+    border: 1px solid #32cd32;
+}
+
+/* Effetto "Crosshair" (mirino) opzionale: 
+   Se vuoi vedere meglio la riga/colonna, possiamo aggiungere questi stati */
+.matrix-cell:hover {
+    background-color: #f0f0f0;
+}
+
+.dante-check {
+    width: 14px;
+    height: 14px;
+    background-color: #32cd32;
+    border-radius: 2px;
+    box-shadow: 0 0 5px rgba(50, 205, 50, 0.5);
+}
+
+.matrix-info-bar {
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid #ccc;
+    font-size: 12px;
+    font-weight: bold;
+}

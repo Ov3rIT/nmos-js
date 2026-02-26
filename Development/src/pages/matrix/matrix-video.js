@@ -2,8 +2,7 @@ import React from 'react';
 import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
-const MatrixVideo = ({ data }) => {
-    // 1. Normalizzazione dei dati: React-Admin può restituire sia Array che Oggetti (mappe ID)
+const MatrixMain = ({ data }) => {
     const normalize = items => {
         if (!items) return [];
         return Array.isArray(items) ? items : Object.values(items);
@@ -13,69 +12,58 @@ const MatrixVideo = ({ data }) => {
     const allReceivers = normalize(data?.receivers);
     const allDevices = normalize(data?.devices);
 
-    const videoSenders = allSenders; // Rimuovi il .filter per un momento
-    const videoReceivers = allReceivers; // Rimuovi il .filter per un momento
-    // 2. Filtraggio Video
-    // Cerchiamo 'video' nel campo format, ma gestiamo anche valori nulli o formati NMOS estesi
-
-    // 3. Mappatura Connessioni (IS-05)
-    // Creiamo un oggetto dove la chiave è l'ID del receiver e il valore è l'ID del sender collegato
+    // Mappatura connessioni esistenti (IS-05)
     const currentConnections = {};
-    videoReceivers.forEach(r => {
-        if (r.subscription && r.subscription.sender_id) {
+    allReceivers.forEach(r => {
+        if (r.subscription?.sender_id) {
             currentConnections[r.id] = r.subscription.sender_id;
         }
     });
 
-    // 4. Logica di Connessione/Disconnessione
     const handleToggleConnection = (receiver, sender, isConnected) => {
         if (isConnected) {
-            // Se è già connesso, inviamo null per fare il "Disconnect"
-            console.log(
-                `Patch Panel: Disconnessione Receiver ${receiver.label || receiver.id}`
-            );
             makeConnection(receiver, null);
-        } else {
-            // Altrimenti eseguiamo la connessione IS-05
-            console.log(
-                `Patch Panel: Connessione ${sender.label} -> ${receiver.label}`
-            );
-            makeConnection(receiver, sender);
+            return;
         }
-    };
 
-    // 5. Stato Vuoto (Fallback se i filtri non trovano nulla)
-    if (videoSenders.length === 0 && videoReceivers.length === 0) {
-        return (
-            <div
-                style={{
-                    padding: '50px',
-                    textAlign: 'center',
-                    color: '#666',
-                    backgroundColor: '#f9f9f9',
-                    border: '1px solid #ddd',
-                    margin: '20px',
-                }}
-            >
-                <h3>Nessun flusso Video trovato</h3>
-                <p>
-                    I dati sono stati caricati, ma nessun Sender o Receiver è
-                    marcato come "video".
-                </p>
-                <p style={{ fontSize: '11px' }}>
-                    Trovati: {allSenders.length} Senders totali,{' '}
-                    {allReceivers.length} Receivers totali.
-                </p>
-            </div>
-        );
-    }
+        // --- CONTROLLO DI SICUREZZA (Punto 2) ---
+        // Verifichiamo che i formati coincidano
+        const sFormat = (sender.format || '').toLowerCase();
+        const rFormat = (
+            receiver.format ||
+            receiver.caps?.format ||
+            ''
+        ).toLowerCase();
+
+        // Estraiamo il tipo base (video, audio, o data/ancillary)
+        const getBaseType = f => {
+            if (f.includes('video')) return 'video';
+            if (f.includes('audio')) return 'audio';
+            return 'ancillary';
+        };
+
+        if (getBaseType(sFormat) !== getBaseType(rFormat)) {
+            alert(
+                `Errore di Patch: Impossibile collegare un flusso ${getBaseType(sFormat)} a un ingresso ${getBaseType(rFormat)}.`
+            );
+            return;
+        }
+
+        makeConnection(receiver, sender);
+    };
 
     return (
         <div className="matrix-page-wrapper">
+            <div className="matrix-info-bar">
+                <span>
+                    🟢 Connessioni attive:{' '}
+                    {Object.keys(currentConnections).length}
+                </span>
+            </div>
             <MatrixBase
                 devices={allDevices}
-                senders={videoSenders}
-                receivers={videoReceivers}
+                senders={allSenders}
+                receivers={allReceivers}
                 connections={currentConnections}
                 onConnect={handleToggleConnection}
             />
@@ -83,4 +71,4 @@ const MatrixVideo = ({ data }) => {
     );
 };
 
-export default MatrixVideo;
+export default MatrixMain;

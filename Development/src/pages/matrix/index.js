@@ -48,32 +48,16 @@ const MatrixPage = () => {
         devices: devices || [],
     };
 
+    // Dentro index.js, semplifica il return:
     return (
         <div className="matrix-container-main">
             <div className="matrix-header">
-                <div className="matrix-tabs-bar">
-                    <button
-                        className={`tab-button ${activeTab === 'video' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('video')}
-                    >
-                        {' '}
-                        VIDEO{' '}
-                    </button>
-                    <button
-                        className={`tab-button ${activeTab === 'audio' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('audio')}
-                    >
-                        {' '}
-                        AUDIO{' '}
-                    </button>
-                </div>
+                <h2 style={{ marginLeft: '20px', fontSize: '18px' }}>
+                    NMOS UNIFIED PATCH PANEL
+                </h2>
             </div>
             <div className="matrix-content-area">
-                {activeTab === 'video' ? (
-                    <MatrixVideo data={nmosData} />
-                ) : (
-                    <MatrixAudio data={nmosData} />
-                )}
+                <MatrixVideo data={nmosData} />
             </div>
         </div>
     );
