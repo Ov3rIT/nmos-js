@@ -12,7 +12,6 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import { makeStyles } from '@material-ui/styles';
 
 import {
-    SvgMatrix,
     DeviceIcon,
     FlowIcon,
     NodeIcon,
@@ -25,6 +24,7 @@ import {
 } from '../icons';
 
 import labelize from '../components/labelize';
+import SvgMatrix from '../icons/Matrix';
 
 const NavLinkRef = forwardRef((props, ref) => (
     <NavLink innerRef={ref} {...props} />
