@@ -5,10 +5,11 @@ import makeConnection from '../../components/makeConnection';
 const MatrixVideo = ({ data }) => {
     const { devices, senders, receivers } = data;
 
-    const videoSenders = senders.filter(
+    // Dentro matrix-video.js
+    const videoSenders = (senders || []).filter(
         s => s.format && s.format.includes('video')
     );
-    const videoReceivers = receivers.filter(
+    const videoReceivers = (receivers || []).filter(
         r => r.format && r.format.includes('video')
     );
 
