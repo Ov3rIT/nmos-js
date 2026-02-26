@@ -27,45 +27,55 @@ const MatrixVideo = ({ data }) => {
     });
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
+        // 1. Debug: Vediamo cosa c'è dentro il receiver
+        console.log('DEBUG Receiver:', receiver);
+        console.log('DEBUG Sender:', sender);
+
         if (isConnected) {
-            // Per disconnettere, nmos-js di solito vuole null o un oggetto vuoto
             makeConnection(receiver, null);
             return;
         }
 
-        // Controllo coerenza tipo (Audio con Audio, ecc.)
+        // 2. Controllo Coerenza
         if (getBaseType(sender) !== getBaseType(receiver)) {
-            alert('Errore: I tipi di segnale non corrispondono!');
+            alert('Errore: Formati non compatibili!');
             return;
         }
 
-        // --- FIX ENDPOINT ---
-        // Se l'endpoint manca nel receiver, cerchiamo di recuperarlo dal Device
-        let finalReceiver = { ...receiver };
+        // 3. Costruzione oggetto "Safe" per makeConnection
+        // Molti componenti nmos-js cercano 'control_endpoints' o 'href'
+        const safeReceiver = {
+            ...receiver,
+            // Se control_endpoints è un array di oggetti, assicuriamoci che sia leggibile
+            // nmos-js si aspetta spesso: [{ address: "...", type: "..." }]
+        };
+
+        // Se mancano gli endpoint nel receiver, proviamo a prenderli dal device
         if (
-            !finalReceiver.control_endpoints ||
-            finalReceiver.control_endpoints.length === 0
+            !safeReceiver.control_endpoints ||
+            safeReceiver.control_endpoints.length === 0
         ) {
-            const parentDevice = allDevices.find(
-                d => d.id === receiver.device_id
-            );
-            if (parentDevice && parentDevice.control_endpoints) {
-                finalReceiver.control_endpoints =
-                    parentDevice.control_endpoints;
+            const dev = allDevices.find(d => d.id === receiver.device_id);
+            if (dev && dev.control_endpoints) {
+                safeReceiver.control_endpoints = dev.control_endpoints;
             }
         }
 
-        console.log(
-            'Tentativo di patch su endpoint:',
-            finalReceiver.control_endpoints
-        );
-
-        try {
-            // Eseguiamo la connessione
-            makeConnection(finalReceiver, sender);
-        } catch (e) {
-            console.error('Errore chiamata makeConnection:', e);
+        // 4. Esecuzione
+        if (
+            !safeReceiver.control_endpoints ||
+            safeReceiver.control_endpoints.length === 0
+        ) {
+            console.error(
+                'ERRORE: Questo receiver non ha endpoint IS-05 definiti!'
+            );
+            alert(
+                'Errore: Il dispositivo non supporta il controllo IS-05 (Endpoint mancante).'
+            );
+            return;
         }
+
+        makeConnection(safeReceiver, sender);
     };
 
     return (
