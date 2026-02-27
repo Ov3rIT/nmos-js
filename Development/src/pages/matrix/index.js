@@ -4,82 +4,78 @@ import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // Configurazione query per il Registry NMOS
-    // Usiamo perPage: 100 per allinearci al test che hai fatto con successo
-    const queryParams = {
-        pagination: { page: 1, perPage: 1000 },
+    // Caricamento di tutte le risorse necessarie con limite a 100
+    const queryConfig = {
+        pagination: { page: 1, perPage: 100 },
         sort: { field: 'label', order: 'ASC' },
         filter: {},
     };
 
-    const {
-        data: senders,
-        loading: loadingS,
-        error: errorS,
-    } = useQueryWithStore({
+    const { data: senders, loading: loadingS } = useQueryWithStore({
         type: 'getList',
         resource: 'senders',
-        payload: queryParams,
+        payload: queryConfig,
     });
 
-    const {
-        data: receivers,
-        loading: loadingR,
-        error: errorR,
-    } = useQueryWithStore({
+    const { data: receivers, loading: loadingR } = useQueryWithStore({
         type: 'getList',
         resource: 'receivers',
-        payload: queryParams,
+        payload: queryConfig,
+    });
+
+    const { data: flows, loading: loadingF } = useQueryWithStore({
+        type: 'getList',
+        resource: 'flows',
+        payload: queryConfig,
     });
 
     const { data: devices, loading: loadingD } = useQueryWithStore({
         type: 'getList',
         resource: 'devices',
-        payload: { ...queryParams, sort: { field: 'id', order: 'ASC' } },
+        payload: { ...queryConfig, sort: { field: 'id', order: 'ASC' } },
     });
 
     const { data: nodes, loading: loadingN } = useQueryWithStore({
         type: 'getList',
         resource: 'nodes',
-        payload: { ...queryParams, sort: { field: 'id', order: 'ASC' } },
+        payload: { ...queryConfig, sort: { field: 'id', order: 'ASC' } },
     });
 
-    if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
-    if (errorS || errorR)
-        return (
-            <Error title="Errore durante la lettura dal Query Service NMOS" />
-        );
+    if (loadingS || loadingR || loadingF || loadingD || loadingN)
+        return <Loading />;
 
     const nmosData = {
         senders: senders || [],
         receivers: receivers || [],
+        flows: flows || [],
         devices: devices || [],
         nodes: nodes || [],
     };
 
     return (
-        <div className="matrix-page">
+        <div className="matrix-page-container">
             <div
-                className="matrix-header-status"
+                className="matrix-status-bar"
                 style={{
-                    padding: '12px 20px',
-                    backgroundColor: '#1e1e1e',
+                    padding: '10px 20px',
+                    background: '#1a1a1a',
                     color: '#00d1b2',
-                    borderBottom: '1px solid #333',
-                    display: 'flex',
-                    justifyContent: 'space-between',
+                    borderBottom: '2px solid #333',
                 }}
             >
-                <strong>NMOS CONTROL PANEL v1.3</strong>
-                <span>
-                    {nmosData.senders.length} Senders |{' '}
-                    {nmosData.receivers.length} Receivers
+                <strong>NMOS MATRIX CONTROL</strong>
+                <span
+                    style={{
+                        marginLeft: '20px',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                    }}
+                >
+                    S: {nmosData.senders.length} | R:{' '}
+                    {nmosData.receivers.length} | F: {nmosData.flows.length}
                 </span>
             </div>
-
-            <div className="matrix-main-content">
-                <MatrixVideo data={nmosData} />
-            </div>
+            <MatrixVideo data={nmosData} />
         </div>
     );
 };
