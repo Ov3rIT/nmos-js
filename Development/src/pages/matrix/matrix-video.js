@@ -3,14 +3,11 @@ import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
 const MatrixVideo = ({ data }) => {
-    const normalize = items => {
-        if (!items) return [];
-        return Array.isArray(items) ? items : Object.values(items);
-    };
+    const normalize = items =>
+        Array.isArray(items) ? items : Object.values(items || {});
 
     const allSenders = normalize(data?.senders);
     const allReceivers = normalize(data?.receivers);
-    const allDevices = normalize(data?.devices);
     const allNodes = normalize(data?.nodes);
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
@@ -19,62 +16,38 @@ const MatrixVideo = ({ data }) => {
             return;
         }
 
-        // 1. Cerchiamo il nodo associato
-        let node = allNodes.find(n => n.id === receiver.node_id);
+        // 1. Trova l'IP del Nodo dal registro caricato dal dataProvider
+        const node = allNodes.find(n => n.id === receiver.node_id);
 
-        // 2. Se non lo trova per ID, cerchiamo per corrispondenza nel Device
-        if (!node) {
-            const dev = allDevices.find(d => d.id === receiver.device_id);
-            if (dev) node = allNodes.find(n => n.id === dev.node_id);
+        // 2. Costruiamo l'endpoint di controllo.
+        // Se il nodo ha un href (es. http://172.16.1.231:8001/), lo usiamo.
+        let control_href = '';
+        if (node && node.href) {
+            control_href = `${node.href}x-nmos/connection/v1.0`;
+        } else if (node && node.api && node.api.endpoints) {
+            const ep = node.api.endpoints[0];
+            control_href = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/v1.0`;
         }
 
-        let control_endpoints = [];
-
-        // 3. Estrazione Endpoint (Logica specifica per Lynx CDE1922)
-        if (node?.api?.endpoints) {
-            control_endpoints = node.api.endpoints.map(ep => ({
-                host: ep.host,
-                port: ep.port,
-                protocol: ep.protocol || 'http',
-                href: `${ep.protocol || 'http'}://${ep.host}:${ep.port}/x-nmos/connection/v1.0`,
-            }));
-        }
-
-        // FALLBACK DISPERATO: Se il mapping fallisce ancora, usiamo l'IP del sender come base
-        // (Spesso i nodi Lynx hanno le API sulla stessa subnet)
-        if (
-            control_endpoints.length === 0 &&
-            sender.description?.includes('172.')
-        ) {
-            const guessedIp = sender.description.match(/\d+\.\d+\.\d+\.\d+/);
-            if (guessedIp) {
-                control_endpoints = [
-                    {
-                        href: `http://${guessedIp[0]}:8001/x-nmos/connection/v1.0`,
-                    },
-                ];
-            }
-        }
-
-        if (control_endpoints.length === 0) {
-            console.error(
-                'Mapping fallito. Receiver:',
-                receiver,
-                'Nodes:',
-                allNodes
-            );
+        if (!control_href) {
+            console.error('Dati nodo mancanti per il receiver:', receiver);
             alert(
-                "Errore: Impossibile mappare l'API del nodo. Verifica la console (F12)."
+                "Errore: Impossibile trovare l'indirizzo IP del dispositivo Lynx."
             );
             return;
         }
 
-        const enrichedReceiver = { ...receiver, control_endpoints };
-        console.log('>>> PATCHING VERSO:', control_endpoints[0].href);
+        // 3. Arricchiamo il receiver con l'endpoint per far felice makeConnection
+        const enrichedReceiver = {
+            ...receiver,
+            control_endpoints: [{ href: control_href }],
+        };
 
+        console.log('Comando IS-05 inviato a:', control_href);
         makeConnection(enrichedReceiver, sender);
     };
 
+    // Mappa le connessioni attuali per i quadratini nella matrice
     const currentConnections = {};
     allReceivers.forEach(r => {
         if (r.subscription?.sender_id)
@@ -83,7 +56,7 @@ const MatrixVideo = ({ data }) => {
 
     return (
         <MatrixBase
-            devices={allDevices}
+            devices={normalize(data?.devices)}
             senders={allSenders}
             receivers={allReceivers}
             connections={currentConnections}
