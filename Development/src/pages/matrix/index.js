@@ -1,26 +1,10 @@
-import React, { useState } from 'react';
-import { Loading, useQueryWithStore } from 'react-admin';
+import React from 'react';
+import { useQueryWithStore, Loading } from 'react-admin';
 import MatrixVideo from './matrix-video';
-import MatrixAudio from './matrix-audio';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    const [activeTab, setActiveTab] = useState('video');
-    // Aggiungi questo insieme agli altri useQueryWithStore in index.js
-    const { data: nodes } = useQueryWithStore({
-        type: 'getList',
-        resource: 'nodes', // o 'node' a seconda del tuo App.js
-        payload: {
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'id', order: 'ASC' },
-            filter: {},
-        },
-    });
-
-    // Passalo poi a MatrixVideo
-    <MatrixVideo data={{ ...nmosData, nodes: nodes }} />;
-
-    // Recuperiamo i Senders
+    // 1. Definiamo le query per tutte le risorse necessarie
     const { data: senders, loading: loadingS } = useQueryWithStore({
         type: 'getList',
         resource: 'senders',
@@ -31,7 +15,6 @@ const MatrixPage = () => {
         },
     });
 
-    // Recuperiamo i Receivers
     const { data: receivers, loading: loadingR } = useQueryWithStore({
         type: 'getList',
         resource: 'receivers',
@@ -42,7 +25,6 @@ const MatrixPage = () => {
         },
     });
 
-    // Recuperiamo i Devices
     const { data: devices, loading: loadingD } = useQueryWithStore({
         type: 'getList',
         resource: 'devices',
@@ -53,15 +35,28 @@ const MatrixPage = () => {
         },
     });
 
-    if (loadingS || loadingR || loadingD) return <Loading />;
+    // Aggiungiamo i NODES (servono per trovare l'IP di controllo IS-05)
+    const { data: nodes, loading: loadingN } = useQueryWithStore({
+        type: 'getList',
+        resource: 'nodes',
+        payload: {
+            pagination: { page: 1, perPage: 1000 },
+            sort: { field: 'id', order: 'ASC' },
+            filter: {},
+        },
+    });
 
+    // 2. Mostriamo il caricamento finché i dati non sono pronti
+    if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
+
+    // 3. ORA dichiariamo nmosData (dopo che le query sono state definite)
     const nmosData = {
         senders: senders || [],
         receivers: receivers || [],
         devices: devices || [],
+        nodes: nodes || [],
     };
 
-    // Dentro index.js, semplifica il return:
     return (
         <div className="matrix-container-main">
             <div className="matrix-header">
@@ -70,6 +65,7 @@ const MatrixPage = () => {
                 </h2>
             </div>
             <div className="matrix-content-area">
+                {/* Passiamo nmosData al componente della matrice */}
                 <MatrixVideo data={nmosData} />
             </div>
         </div>
