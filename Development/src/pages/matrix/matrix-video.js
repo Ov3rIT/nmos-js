@@ -26,56 +26,56 @@ const MatrixVideo = ({ data }) => {
         }
     });
 
-    const handleToggleConnection = (receiver, sender, isConnected) => {
-        // 1. Debug: Vediamo cosa c'è dentro il receiver
-        console.log('DEBUG Receiver:', receiver);
-        console.log('DEBUG Sender:', sender);
+    const handleToggleConnection = async (receiver, sender, isConnected) => {
+        // 1. Determina l'URL di controllo IS-05
+        // Cerchiamo l'endpoint di tipo 'connection' v1.0 o v1.1
+        const connectionEndpoint = receiver.control_endpoints?.find(ep =>
+            ep.type.includes('connection')
+        )?.address;
 
-        if (isConnected) {
-            makeConnection(receiver, null);
+        if (!connectionEndpoint) {
+            alert(
+                "Errore: Impossibile trovare l'URL IS-05 per questo Receiver."
+            );
             return;
         }
 
-        // 2. Controllo Coerenza
-        if (getBaseType(sender) !== getBaseType(receiver)) {
-            alert('Errore: Formati non compatibili!');
-            return;
-        }
+        // Costruiamo l'URL finale per il comando 'staged'
+        // Rimuoviamo eventuale slash finale e aggiungiamo il percorso standard
+        const baseUrl = connectionEndpoint.replace(/\/$/, '');
+        const patchUrl = `${baseUrl}/single/receivers/${receiver.id}/staged`;
 
-        // 3. Costruzione oggetto "Safe" per makeConnection
-        // Molti componenti nmos-js cercano 'control_endpoints' o 'href'
-        const safeReceiver = {
-            ...receiver,
-            // Se control_endpoints è un array di oggetti, assicuriamoci che sia leggibile
-            // nmos-js si aspetta spesso: [{ address: "...", type: "..." }]
+        // 2. Prepariamo il Body della richiesta (Standard IS-05)
+        const body = {
+            sender_id: isConnected ? null : sender.id, // Se già connesso, invia null per scollegare
+            master_enable: true,
+            activation: {
+                mode: 'activate_immediate',
+            },
         };
 
-        // Se mancano gli endpoint nel receiver, proviamo a prenderli dal device
-        if (
-            !safeReceiver.control_endpoints ||
-            safeReceiver.control_endpoints.length === 0
-        ) {
-            const dev = allDevices.find(d => d.id === receiver.device_id);
-            if (dev && dev.control_endpoints) {
-                safeReceiver.control_endpoints = dev.control_endpoints;
+        try {
+            console.log(`Esecuzione Patch Manuale su: ${patchUrl}`, body);
+
+            const response = await fetch(patchUrl, {
+                method: 'PATCH', // IS-05 usa PATCH o PUT a seconda della versione, PATCH è più comune per staged
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+
+            if (response.ok) {
+                console.log('Patch eseguito con successo!');
+                // Opzionale: qui potresti forzare un refresh dei dati o mostrare un messaggio
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Errore del server NMOS');
             }
+        } catch (err) {
+            console.error('Errore API IS-05:', err);
+            alert(`Errore durante il patch: ${err.message}`);
         }
-
-        // 4. Esecuzione
-        if (
-            !safeReceiver.control_endpoints ||
-            safeReceiver.control_endpoints.length === 0
-        ) {
-            console.error(
-                'ERRORE: Questo receiver non ha endpoint IS-05 definiti!'
-            );
-            alert(
-                'Errore: Il dispositivo non supporta il controllo IS-05 (Endpoint mancante).'
-            );
-            return;
-        }
-
-        makeConnection(safeReceiver, sender);
     };
 
     return (
