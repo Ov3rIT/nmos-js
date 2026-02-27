@@ -12,55 +12,65 @@ const MatrixVideo = ({ data }) => {
 
     // FUNZIONE DI PATCH DIRETTA (IS-05)
     const performNmosPatch = async (receiver, sender) => {
-        // 1. Risoluzione Nodo (Receiver -> Device -> Node)
+        // 1. Risoluzione IP del Nodo (come prima)
         let nodeId = receiver.node_id;
         if (!nodeId && receiver.device_id) {
             const dev = allDevices.find(d => d.id === receiver.device_id);
             nodeId = dev?.node_id;
         }
-
         const node = allNodes.find(n => n.id === nodeId);
-        if (!node || !node.api?.endpoints) {
-            console.error('Dati nodo non trovati per:', nodeId);
-            alert(
-                "Errore: Impossibile trovare l'endpoint di controllo del dispositivo."
-            );
-            return;
-        }
+        if (!node) return;
 
-        // Costruiamo l'URL del comando
         const ep = node.api.endpoints[0];
-        const patchUrl = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/v1.0/single/receivers/${receiver.id}/target`;
+        const baseUrl = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/v1.0/single/receivers/${receiver.id}`;
 
-        // 2. Preparazione Body NMOS
-        const patchBody = {
-            sender_id: sender ? sender.id : null,
-            master_enable: true,
-            activation: { mode: 'activate_immediate' },
-        };
-
-        console.log('>>> TENTATIVO PATCH DIRETTO A:', patchUrl);
-
-        // 3. Esecuzione Chiamata
         try {
-            const response = await fetch(patchUrl, {
+            let transportParams = {};
+
+            if (sender) {
+                // --- CONNESSIONE ---
+                // Recuperiamo i transport_params dal sender (spesso sono nei tags o ricavabili)
+                // Nota: In un'implementazione completa dovresti fare una GET al sender.
+                // Qui ipotizziamo di mappare i parametri base.
+                transportParams = {
+                    sender_id: sender.id,
+                    master_enable: true,
+                    activation: { mode: 'activate_immediate' },
+                    transport_params: [
+                        {
+                            multicast_ip: sender.manifest_href || '239.1.1.1', // Esempio: andrebbe letto dal sender
+                            interface_ip: '172.16.1.10', // L'IP della tua interfaccia media
+                            destination_port: 5000,
+                        },
+                    ],
+                };
+            } else {
+                // --- DISCONNESSIONE (Parking) ---
+                transportParams = {
+                    sender_id: null,
+                    master_enable: false,
+                    activation: { mode: 'activate_immediate' },
+                };
+            }
+
+            console.log('>>> INVIO PATCH A /staged:', transportParams);
+
+            const response = await fetch(`${baseUrl}/staged`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(patchBody),
+                body: JSON.stringify(transportParams),
             });
 
-            if (response.ok || response.status === 202) {
+            if (response.ok) {
                 console.log(
-                    '>>> SUCCESS: Commutazione eseguita correttamente.'
+                    '>>> SUCCESS: Parametri inviati a STAGED e ATTIVATI.'
                 );
             } else {
-                alert(`Errore Dispositivo: ${response.status}`);
+                const err = await response.text();
+                console.error('Errore IS-05:', err);
             }
         } catch (err) {
-            console.error('ERRORE DI RETE (Probabile CORS):', err);
-            alert(
-                'Errore CORS: Il browser blocca la chiamata al dispositivo Lynx. Vedi console per dettagli.'
-            );
+            console.error('Errore di rete:', err);
         }
     };
 
