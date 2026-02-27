@@ -11,22 +11,17 @@ const MatrixVideo = ({ data }) => {
     const allSenders = normalize(data?.senders);
     const allReceivers = normalize(data?.receivers);
     const allDevices = normalize(data?.devices);
-    const allNodes = normalize(data?.nodes); // Recuperati dal nuovo index.js
+    const allNodes = normalize(data?.nodes);
 
-    // Funzione ultra-permissiva per rilevare il tipo
+    // FIX TIPO: Usiamo una regex per catturare 'video', 'audio' o 'anc' dentro la stringa URN
     const getBaseType = item => {
         if (!item) return 'unknown';
-        // Controlla format, caps.format o transport
-        const val = (
-            item.format ||
-            item.caps?.format ||
-            item.transport ||
-            ''
-        ).toLowerCase();
+        const val = (item.format || item.caps?.format || '').toLowerCase();
         if (val.includes('video')) return 'video';
         if (val.includes('audio')) return 'audio';
-        if (val.includes('data') || val.includes('anc')) return 'ancillary';
-        return 'video'; // Fallback per sicurezza se non riconosciuto
+        if (val.includes('ancillary') || val.includes('data'))
+            return 'ancillary';
+        return 'unknown';
     };
 
     const currentConnections = {};
@@ -42,53 +37,71 @@ const MatrixVideo = ({ data }) => {
             return;
         }
 
+        // --- 1. VERIFICA TIPO (Flessibile) ---
         const sType = getBaseType(sender);
         const rType = getBaseType(receiver);
+        console.log(
+            `Patching: ${sender.label} (${sType}) -> ${receiver.label} (${rType})`
+        );
 
-        console.log(`Verifica Patch: Sender(${sType}) -> Receiver(${rType})`);
-
-        // Se uno dei due è sconosciuto, permettiamo il patch ma avvisiamo in console
+        // Permettiamo il patch se i tipi coincidono o se uno è unknown
         if (sType !== rType && sType !== 'unknown' && rType !== 'unknown') {
-            alert(`Errore: Stai cercando di collegare ${sType} con ${rType}`);
-            return;
+            const procedi = window.confirm(
+                `Attenzione: Tipi diversi (${sType} vs ${rType}). Vuoi procedere comunque?`
+            );
+            if (!procedi) return;
         }
 
-        // --- LOOKUP ENDPOINT ---
+        // --- 2. RECUPERO ENDPOINT (Lookup gerarchico) ---
         let endpoints = receiver.control_endpoints || [];
 
-        // Se vuoto, cerca nel Device
+        // Se il receiver è vuoto, cerchiamo nel Device associato
         if (endpoints.length === 0) {
             const dev = allDevices.find(d => d.id === receiver.device_id);
-            if (dev?.control_endpoints) endpoints = dev.control_endpoints;
-        }
-
-        // Se ancora vuoto, cerca nel Node
-        if (endpoints.length === 0) {
-            const node = allNodes.find(n => n.id === receiver.node_id);
-            if (node?.services) {
-                const connService = node.services.find(s =>
-                    s.type.includes('connection')
-                );
-                if (connService) endpoints = [{ href: connService.href }];
+            if (dev?.control_endpoints && dev.control_endpoints.length > 0) {
+                endpoints = dev.control_endpoints;
             }
         }
 
+        // Se è ancora vuoto, cerchiamo nel Node
         if (endpoints.length === 0) {
+            const node = allNodes.find(n => n.id === receiver.node_id);
+            if (node?.services) {
+                // Cerchiamo il servizio "connection" (IS-05)
+                const connService = node.services.find(s =>
+                    s.type.toLowerCase().includes('connection')
+                );
+                if (connService) {
+                    endpoints = [{ href: connService.href }];
+                }
+            }
+        }
+
+        // --- 3. VERIFICA FINALE ED ESECUZIONE ---
+        if (endpoints.length === 0) {
+            console.error('Dati ricevuti per lookup fallito:', {
+                receiver,
+                nodes: allNodes,
+            });
             alert(
-                "Errore: Impossibile trovare l'URL di controllo (IS-05). Controlla la console."
+                "Errore: Impossibile trovare l'URL di controllo IS-05 per questo dispositivo."
             );
-            console.log('Dati del receiver incriminato:', receiver);
             return;
         }
 
-        // nmos-js a volte richiede che l'endpoint sia iniettato così:
-        const enrichedReceiver = { ...receiver, control_endpoints: endpoints };
+        // Prepariamo l'oggetto come lo vuole makeConnection
+        const enrichedReceiver = {
+            ...receiver,
+            control_endpoints: endpoints,
+        };
 
-        console.log(
-            'Patch in esecuzione verso:',
-            endpoints[0]?.href || endpoints[0]
-        );
-        makeConnection(enrichedReceiver, sender);
+        console.log('Endpoint trovato:', endpoints);
+
+        try {
+            makeConnection(enrichedReceiver, sender);
+        } catch (err) {
+            console.error('Errore durante makeConnection:', err);
+        }
     };
 
     return (
