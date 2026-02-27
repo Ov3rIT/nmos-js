@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useQueryWithStore, Loading, Error } from 'react-admin';
+import { Error, Loading, useQueryWithStore } from 'react-admin';
 import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
