@@ -12,11 +12,11 @@ const MatrixVideo = ({ data }) => {
     const allNodes = normalize(data?.nodes);
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
-        // 1. Recupero oggetto completo per avere i metadati NMOS (caps, transport, ecc.)
+        // 1. Recupero oggetto completo dallo store per avere i metadati originali
         const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
 
-        // 2. Risoluzione Nodo (fondamentale perché makeConnection usa i control_endpoints)
+        // 2. Risoluzione Nodo e IP
         let nodeId = fullReceiver.node_id;
         if (!nodeId && fullReceiver.device_id) {
             const dev = allDevices.find(d => d.id === fullReceiver.device_id);
@@ -24,55 +24,63 @@ const MatrixVideo = ({ data }) => {
         }
 
         const node = allNodes.find(n => n.id === nodeId);
-
         if (!node || !node.api?.endpoints) {
             console.error(
-                'Nodo non trovato per il receiver:',
-                fullReceiver.label
+                "Dati del Nodo non trovati per l'endpoint di controllo."
             );
             return;
         }
 
-        // 3. Costruzione dell'oggetto conforme alla libreria
-        // makeConnection.js scansiona questo array cercando l'API di Connection Management
         const ep = node.api.endpoints[0];
+        // Determiniamo la versione supportata dal Lynx
         const version =
             node.api.versions && node.api.versions.includes('v1.1')
                 ? 'v1.1'
                 : 'v1.0';
 
+        // 3. COSTRUZIONE ENDPOINT - IL FIX DECISIVO
+        // makeConnection.js filtra gli endpoint basandosi su fullReceiver.transport.
+        // Lo forziamo qui per garantire il match.
+        const transportType =
+            fullReceiver.transport || 'urn:x-nmos:transport:rtp';
+
         const enrichedReceiver = {
             ...fullReceiver,
             control_endpoints: [
                 {
-                    // La libreria concatena automaticamente le rotte se l'href è corretto
+                    // Nota: L'URL deve finire con lo slash per alcune versioni della libreria
                     href: `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/`,
-                    type: fullReceiver.transport || 'urn:x-nmos:transport:rtp',
+                    type: transportType,
                 },
             ],
         };
 
+        console.log(`Lancio makeConnection per: ${enrichedReceiver.label}`);
         console.log(
-            `Lancio makeConnection per ${enrichedReceiver.label} verso ${sender?.label || 'PARKING'}`
+            `Endpoint Type: ${transportType} | Receiver Transport: ${fullReceiver.transport}`
         );
 
-        // 4. Esecuzione tramite la funzione originale del repository
-        // Se sender è null, la libreria gestisce automaticamente la disconnessione
+        // 4. Esecuzione tramite libreria
+        // Passiamo null a sender se vogliamo disconnettere (isConnected è true)
         makeConnection(enrichedReceiver, isConnected ? null : sender)
             .then(() => {
-                console.log('SUCCESS: Operazione completata dalla libreria.');
+                console.log('SUCCESS: Operazione IS-05 completata.');
             })
             .catch(err => {
-                // Se qui vedi ancora "Invalid endpoint", significa che il 'type' nell'endpoint
-                // non coincide esattamente con il 'transport' del receiver nel Registry.
                 console.error('ERRORE LIBRERIA:', err);
+                if (err === 'Invalid endpoint') {
+                    console.warn(
+                        "La libreria non accetta l'endpoint. Verifica che fullReceiver.transport sia presente."
+                    );
+                }
             });
     };
 
     const currentConnections = {};
     allReceivers.forEach(r => {
-        if (r.subscription?.sender_id)
+        if (r.subscription?.sender_id) {
             currentConnections[r.id] = r.subscription.sender_id;
+        }
     });
 
     return (
