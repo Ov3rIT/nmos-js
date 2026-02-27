@@ -4,7 +4,7 @@ import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // 1. Caricamento Senders
+    // Caricamento asincrono di tutte le risorse NMOS necessarie
     const {
         data: senders,
         loading: loadingS,
@@ -19,7 +19,6 @@ const MatrixPage = () => {
         },
     });
 
-    // 2. Caricamento Receivers
     const {
         data: receivers,
         loading: loadingR,
@@ -34,7 +33,6 @@ const MatrixPage = () => {
         },
     });
 
-    // 3. Caricamento Devices
     const {
         data: devices,
         loading: loadingD,
@@ -49,7 +47,6 @@ const MatrixPage = () => {
         },
     });
 
-    // 4. Caricamento Nodes (Cruciale per trovare l'IP di controllo IS-05)
     const {
         data: nodes,
         loading: loadingN,
@@ -64,12 +61,14 @@ const MatrixPage = () => {
         },
     });
 
-    // 5. Gestione stati di caricamento ed errore
+    // Stato di caricamento
     if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
-    if (errorS || errorR || errorD || errorN)
-        return <Error title="Errore nel caricamento delle risorse NMOS" />;
 
-    // 6. Preparazione del pacchetto dati con useMemo per ottimizzare le prestazioni
+    // Gestione errori di rete
+    if (errorS || errorR || errorD || errorN)
+        return <Error title="Errore nel caricamento del Registry NMOS" />;
+
+    // Organizzazione dei dati per MatrixVideo
     const nmosData = {
         senders: senders || [],
         receivers: receivers || [],
@@ -90,20 +89,17 @@ const MatrixPage = () => {
                     justifyContent: 'space-between',
                 }}
             >
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '500' }}>
+                <h2 style={{ margin: 0, fontSize: '18px' }}>
                     NMOS UNIFIED PATCH PANEL
                 </h2>
-                <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                    Registrati: {nmosData.nodes.length} Nodi |{' '}
-                    {nmosData.senders.length} Senders
+                <div style={{ fontSize: '12px' }}>
+                    Nodi: {nmosData.nodes.length} | Senders:{' '}
+                    {nmosData.senders.length} | Receivers:{' '}
+                    {nmosData.receivers.length}
                 </div>
             </div>
 
             <div className="matrix-content-area" style={{ padding: '20px' }}>
-                {/* Passiamo i dati alla matrice. 
-                  MatrixVideo userà l'array 'nodes' per estrarre l'IP 
-                  e costruire l'URL di patch IS-05.
-                */}
                 <MatrixVideo data={nmosData} />
             </div>
         </div>
