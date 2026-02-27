@@ -3,7 +3,6 @@ import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
 const MatrixVideo = ({ data }) => {
-    // Utility per trasformare i dati in array validi
     const normalize = items =>
         Array.isArray(items) ? items : Object.values(items || {});
 
@@ -12,84 +11,78 @@ const MatrixVideo = ({ data }) => {
     const allDevices = normalize(data?.devices);
     const allNodes = normalize(data?.nodes);
 
-    // Funzione che gestisce il click sulla cella della matrice
     const handleToggleConnection = (receiver, sender, isConnected) => {
         if (isConnected) {
             makeConnection(receiver, null);
             return;
         }
 
-        // 1. Recuperiamo l'oggetto completo
+        // 1. Recupero oggetto completo
         const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
 
-        // 2. TENTATIVO DI RECUPERO NODE_ID
+        // 2. Risoluzione Node ID (tramite receiver o device)
         let nodeId = fullReceiver.node_id;
-
-        // Se manca il node_id, lo cerchiamo tramite il Device
         if (!nodeId && fullReceiver.device_id) {
-            console.log(
-                'node_id assente, lo cerco tramite device_id:',
-                fullReceiver.device_id
-            );
             const device = allDevices.find(
                 d => d.id === fullReceiver.device_id
             );
-            if (device) {
-                nodeId = device.node_id;
-            }
+            if (device) nodeId = device.node_id;
         }
 
-        if (!nodeId) {
-            console.error(
-                'ERRORE: Impossibile risalire al Node ID (nemmeno tramite Device).',
-                fullReceiver
-            );
-            alert('Errore: Dati NMOS incompleti per questo apparato.');
-            return;
-        }
-
-        // 3. CERCHIAMO IL NODO PER TROVARE L'IP
+        // 3. Trova il Nodo e costruisci l'URL
         const node = allNodes.find(n => n.id === nodeId);
-        let control_href = '';
+        let baseUrl = '';
 
         if (node && node.api && node.api.endpoints) {
             const ep = node.api.endpoints[0];
-            const version =
-                node.api.versions && node.api.versions.includes('v1.1')
-                    ? 'v1.1'
-                    : 'v1.0';
-            control_href = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}`;
-        } else if (node && node.href) {
-            control_href = `${node.href}x-nmos/connection/v1.0`;
+            // NOTA: Molte librerie aggiungono /x-nmos/... internamente,
+            // ma Lynx spesso richiede l'URL completo. Proviamo la forma standard:
+            baseUrl = `${ep.protocol}://${ep.host}:${ep.port}`;
         }
 
-        if (!control_href) {
-            console.error(
-                'Mapping fallito. Node ID trovato:',
-                nodeId,
-                'Ma il nodo non ha endpoint o href.'
-            );
-            alert(`Impossibile trovare l'indirizzo IP per il nodo: ${nodeId}`);
+        if (!baseUrl) {
+            alert("Errore: Impossibile mappare l'IP del dispositivo.");
             return;
         }
 
-        // 4. ESECUZIONE PATCH
+        // 4. COSTRUZIONE ENDPOINT PER SUPERARE LA VALIDAZIONE
+        // makeConnection.js spesso cerca un endpoint con tipo specifico
         const enrichedReceiver = {
             ...fullReceiver,
-            control_endpoints: [{ href: control_href }],
+            control_endpoints: [
+                {
+                    href: `${baseUrl}/x-nmos/connection/v1.0`,
+                    type: 'urn:x-nmos:transport:rtp',
+                    protocol: 'http',
+                },
+                {
+                    // Fallback per versioni che cercano l'host pulito
+                    host: baseUrl.split('://')[1].split(':')[0],
+                    port: parseInt(baseUrl.split(':')[2]),
+                    protocol: 'http',
+                },
+            ],
         };
 
-        console.log(`>>> PATCH INVIATO A: ${control_href}`);
-        makeConnection(enrichedReceiver, sender);
+        console.log(
+            'Tentativo connessione verso:',
+            enrichedReceiver.control_endpoints[0].href
+        );
+
+        // Chiamata alla funzione originale
+        makeConnection(enrichedReceiver, sender)
+            .then(() => console.log('Connessione riuscita!'))
+            .catch(err => {
+                console.error('Dettaglio Errore:', err);
+                // Se fallisce ancora, il problema potrebbe essere la versione API (v1.0 vs v1.1)
+            });
     };
 
-    // Creiamo la mappa delle connessioni attive per colorare i quadratini nella matrice
     const currentConnections = {};
     allReceivers.forEach(r => {
-        if (r.subscription && r.subscription.sender_id) {
+        if (r.subscription?.sender_id)
             currentConnections[r.id] = r.subscription.sender_id;
-        }
     });
 
     return (

@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Error, Loading, useQueryWithStore } from 'react-admin';
 import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // Caricamento asincrono di tutte le risorse NMOS necessarie
+    // Caricamento Senders
     const {
         data: senders,
         loading: loadingS,
@@ -19,6 +19,7 @@ const MatrixPage = () => {
         },
     });
 
+    // Caricamento Receivers
     const {
         data: receivers,
         loading: loadingR,
@@ -33,6 +34,7 @@ const MatrixPage = () => {
         },
     });
 
+    // Caricamento Devices
     const {
         data: devices,
         loading: loadingD,
@@ -47,6 +49,7 @@ const MatrixPage = () => {
         },
     });
 
+    // Caricamento Nodes (Indispensabile per l'IP di controllo)
     const {
         data: nodes,
         loading: loadingN,
@@ -61,14 +64,10 @@ const MatrixPage = () => {
         },
     });
 
-    // Stato di caricamento
     if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
-
-    // Gestione errori di rete
     if (errorS || errorR || errorD || errorN)
-        return <Error title="Errore nel caricamento del Registry NMOS" />;
+        return <Error title="Errore Registry NMOS" />;
 
-    // Organizzazione dei dati per MatrixVideo
     const nmosData = {
         senders: senders || [],
         receivers: receivers || [],
@@ -77,29 +76,15 @@ const MatrixPage = () => {
     };
 
     return (
-        <div className="matrix-container-main">
-            <div
-                className="matrix-header"
-                style={{
-                    padding: '10px 20px',
-                    background: '#2c3e50',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                }}
-            >
-                <h2 style={{ margin: 0, fontSize: '18px' }}>
-                    NMOS UNIFIED PATCH PANEL
-                </h2>
-                <div style={{ fontSize: '12px' }}>
-                    Nodi: {nmosData.nodes.length} | Senders:{' '}
-                    {nmosData.senders.length} | Receivers:{' '}
-                    {nmosData.receivers.length}
-                </div>
+        <div className="matrix-page-container">
+            <div className="matrix-header-bar">
+                <h2>NMOS Matrix Control</h2>
+                <span>
+                    Nodes: {nmosData.nodes.length} | Senders:{' '}
+                    {nmosData.senders.length}
+                </span>
             </div>
-
-            <div className="matrix-content-area" style={{ padding: '20px' }}>
+            <div className="matrix-body">
                 <MatrixVideo data={nmosData} />
             </div>
         </div>
