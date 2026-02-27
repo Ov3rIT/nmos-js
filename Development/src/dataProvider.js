@@ -1037,7 +1037,7 @@ const convertHTTPResponseToDataProvider = async (
 const dataProvider = async (type, resource, params) => {
     const { fetchJson } = fetchUtils;
     const { api } = apiResource(resource);
-    const pagingLimit = apiPagingLimit(api);
+    const pagingLimit = 1000; //apiPagingLimit(api);
     const pagingLimitRegex = /paging.limit=\d*/;
     let recordsToGet = pagingLimit;
     let result = null;
