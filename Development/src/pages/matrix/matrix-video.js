@@ -1,16 +1,8 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
 import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 
 const MatrixVideo = ({ data }) => {
-    // Recuperiamo i Nodes dallo store (spesso l'URL IS-05 è lì)
-    const nodes = useSelector(state =>
-        state.admin.resources.nodes?.data
-            ? Object.values(state.admin.resources.nodes.data)
-            : []
-    );
-
     const normalize = items => {
         if (!items) return [];
         return Array.isArray(items) ? items : Object.values(items);
@@ -19,12 +11,22 @@ const MatrixVideo = ({ data }) => {
     const allSenders = normalize(data?.senders);
     const allReceivers = normalize(data?.receivers);
     const allDevices = normalize(data?.devices);
+    const allNodes = normalize(data?.nodes); // Recuperati dal nuovo index.js
 
+    // Funzione ultra-permissiva per rilevare il tipo
     const getBaseType = item => {
-        const format = (item?.format || '').toLowerCase();
-        if (format.includes('video')) return 'video';
-        if (format.includes('audio')) return 'audio';
-        return 'ancillary';
+        if (!item) return 'unknown';
+        // Controlla format, caps.format o transport
+        const val = (
+            item.format ||
+            item.caps?.format ||
+            item.transport ||
+            ''
+        ).toLowerCase();
+        if (val.includes('video')) return 'video';
+        if (val.includes('audio')) return 'audio';
+        if (val.includes('data') || val.includes('anc')) return 'ancillary';
+        return 'video'; // Fallback per sicurezza se non riconosciuto
     };
 
     const currentConnections = {};
@@ -40,46 +42,52 @@ const MatrixVideo = ({ data }) => {
             return;
         }
 
-        if (getBaseType(sender) !== getBaseType(receiver)) {
-            alert('Errore: I tipi di segnale non corrispondono!');
+        const sType = getBaseType(sender);
+        const rType = getBaseType(receiver);
+
+        console.log(`Verifica Patch: Sender(${sType}) -> Receiver(${rType})`);
+
+        // Se uno dei due è sconosciuto, permettiamo il patch ma avvisiamo in console
+        if (sType !== rType && sType !== 'unknown' && rType !== 'unknown') {
+            alert(`Errore: Stai cercando di collegare ${sType} con ${rType}`);
             return;
         }
 
-        // --- LOGICA DI RECUPERO URL (IS-05) ---
-        let control_endpoints = receiver.control_endpoints || [];
+        // --- LOOKUP ENDPOINT ---
+        let endpoints = receiver.control_endpoints || [];
 
-        // 1. Se il receiver è vuoto, cerca nel Device
-        if (control_endpoints.length === 0) {
+        // Se vuoto, cerca nel Device
+        if (endpoints.length === 0) {
             const dev = allDevices.find(d => d.id === receiver.device_id);
-            if (dev?.control_endpoints)
-                control_endpoints = dev.control_endpoints;
+            if (dev?.control_endpoints) endpoints = dev.control_endpoints;
         }
 
-        // 2. Se è ancora vuoto, cerca nel Node (molto comune in nmos-js)
-        if (control_endpoints.length === 0) {
-            const node = nodes.find(n => n.id === receiver.node_id);
+        // Se ancora vuoto, cerca nel Node
+        if (endpoints.length === 0) {
+            const node = allNodes.find(n => n.id === receiver.node_id);
             if (node?.services) {
-                // NMOS IS-04: i servizi di controllo sono spesso in node.services
                 const connService = node.services.find(s =>
                     s.type.includes('connection')
                 );
-                if (connService)
-                    control_endpoints = [{ href: connService.href }];
+                if (connService) endpoints = [{ href: connService.href }];
             }
         }
 
-        if (control_endpoints.length === 0) {
-            console.error('Dati mancanti per il Receiver:', receiver);
+        if (endpoints.length === 0) {
             alert(
-                "Errore: Impossibile trovare l'URL IS-05. Il dispositivo potrebbe non supportare IS-05 o i dati non sono caricati."
+                "Errore: Impossibile trovare l'URL di controllo (IS-05). Controlla la console."
             );
+            console.log('Dati del receiver incriminato:', receiver);
             return;
         }
 
-        // Creiamo l'oggetto "arricchito" da passare a makeConnection
-        const enrichedReceiver = { ...receiver, control_endpoints };
+        // nmos-js a volte richiede che l'endpoint sia iniettato così:
+        const enrichedReceiver = { ...receiver, control_endpoints: endpoints };
 
-        console.log('Tentativo di patch con endpoint:', control_endpoints);
+        console.log(
+            'Patch in esecuzione verso:',
+            endpoints[0]?.href || endpoints[0]
+        );
         makeConnection(enrichedReceiver, sender);
     };
 

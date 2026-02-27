@@ -6,6 +6,19 @@ import './matrix-style.css';
 
 const MatrixPage = () => {
     const [activeTab, setActiveTab] = useState('video');
+    // Aggiungi questo insieme agli altri useQueryWithStore in index.js
+    const { data: nodes } = useQueryWithStore({
+        type: 'getList',
+        resource: 'nodes', // o 'node' a seconda del tuo App.js
+        payload: {
+            pagination: { page: 1, perPage: 1000 },
+            sort: { field: 'id', order: 'ASC' },
+            filter: {},
+        },
+    });
+
+    // Passalo poi a MatrixVideo
+    <MatrixVideo data={{ ...nmosData, nodes: nodes }} />;
 
     // Recuperiamo i Senders
     const { data: senders, loading: loadingS } = useQueryWithStore({
