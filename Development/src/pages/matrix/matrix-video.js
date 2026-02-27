@@ -14,20 +14,38 @@ const MatrixVideo = ({ data }) => {
 
     // Funzione che gestisce il click sulla cella della matrice
     const handleToggleConnection = (receiver, sender, isConnected) => {
-        // Se è già connesso, inviamo null per fare il "Parking" (disconnessione)
         if (isConnected) {
             makeConnection(receiver, null);
             return;
         }
 
-        // --- RISOLUZIONE ENDPOINT DI CONTROLLO (IS-05) ---
-        // 1. Cerchiamo il Node a cui appartiene il Receiver
-        const node = allNodes.find(n => n.id === receiver.node_id);
+        // --- FIX PER UNDEFINED ---
+        // Se receiver.node_id è undefined, cerchiamo l'oggetto originale completo
+        // usando l'id del receiver nell'elenco totale dei receiver caricati
+        const fullReceiver =
+            allReceivers.find(r => r.id === receiver.id) || receiver;
+
+        console.log('Dati Receiver per Patch:', fullReceiver);
+
+        const nodeId = fullReceiver.node_id;
+
+        if (!nodeId) {
+            console.error(
+                'ERRORE: Il receiver non ha un node_id associato.',
+                fullReceiver
+            );
+            alert(
+                'Errore tecnico: Il dispositivo non ha fornito un ID di riferimento (Node ID).'
+            );
+            return;
+        }
+
+        // 1. Cerchiamo il Node
+        const node = allNodes.find(n => n.id === nodeId);
 
         let control_href = '';
 
         if (node && node.api && node.api.endpoints) {
-            // Prendiamo il primo endpoint disponibile (solitamente porta 8001 per Lynx)
             const ep = node.api.endpoints[0];
             const version =
                 node.api.versions && node.api.versions.includes('v1.1')
@@ -38,32 +56,25 @@ const MatrixVideo = ({ data }) => {
             control_href = `${node.href}x-nmos/connection/v1.0`;
         }
 
-        // Se non troviamo l'IP del nodo, non possiamo procedere
         if (!control_href) {
-            console.error('Mapping fallito per il nodo:', receiver.node_id);
-            alert(
-                "Errore: Impossibile trovare l'indirizzo IP del dispositivo di destinazione."
+            console.error(
+                'Mapping fallito per il nodo:',
+                nodeId,
+                'Nodi disponibili:',
+                allNodes
             );
+            alert(`Impossibile trovare l'IP per il nodo: ${nodeId}`);
             return;
         }
 
         // --- ESECUZIONE PATCH ---
         const enrichedReceiver = {
-            ...receiver,
+            ...fullReceiver,
             control_endpoints: [{ href: control_href }],
         };
 
         console.log(`>>> INVIO PATCH A: ${control_href}`);
-        console.log(
-            `>>> DESTINAZIONE: ${receiver.label} | SORGENTE: ${sender.label}`
-        );
-
-        try {
-            makeConnection(enrichedReceiver, sender);
-        } catch (err) {
-            console.error('Errore durante la connessione:', err);
-            alert("Errore nell'invio del comando IS-05.");
-        }
+        makeConnection(enrichedReceiver, sender);
     };
 
     // Creiamo la mappa delle connessioni attive per colorare i quadratini nella matrice
