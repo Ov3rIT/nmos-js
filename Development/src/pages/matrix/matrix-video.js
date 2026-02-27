@@ -10,68 +10,67 @@ const MatrixVideo = ({ data }) => {
     const allDevices = normalize(data?.devices);
     const allNodes = normalize(data?.nodes);
 
-    // FUNZIONE DI PATCH MANUALE (Bypassa makeConnection.js)
-    const manualNmosPatch = async (receiver, sender) => {
-        // 1. Trova l'IP del Nodo
+    // FUNZIONE DI PATCH DIRETTA (IS-05)
+    const performNmosPatch = async (receiver, sender) => {
+        // 1. Risoluzione Nodo (Receiver -> Device -> Node)
         let nodeId = receiver.node_id;
         if (!nodeId && receiver.device_id) {
             const dev = allDevices.find(d => d.id === receiver.device_id);
-            if (dev) nodeId = dev.node_id;
+            nodeId = dev?.node_id;
         }
 
         const node = allNodes.find(n => n.id === nodeId);
-        if (!node || !node.api || !node.api.endpoints) {
-            alert("Errore: Impossibile trovare l'IP del nodo di controllo.");
+        if (!node || !node.api?.endpoints) {
+            console.error('Dati nodo non trovati per:', nodeId);
+            alert(
+                "Errore: Impossibile trovare l'endpoint di controllo del dispositivo."
+            );
             return;
         }
 
+        // Costruiamo l'URL del comando
         const ep = node.api.endpoints[0];
-        // Costruiamo l'URL finale per il comando IS-05
         const patchUrl = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/v1.0/single/receivers/${receiver.id}/target`;
 
-        console.log('>>> INVIO PATCH MANUALE A:', patchUrl);
-
-        // 2. Preparazione del Body (Standard NMOS IS-05)
-        const body = {
-            sender_id: sender ? sender.id : null, // Se sender è null, facciamo il "parking"
+        // 2. Preparazione Body NMOS
+        const patchBody = {
+            sender_id: sender ? sender.id : null,
             master_enable: true,
             activation: { mode: 'activate_immediate' },
         };
 
-        // 3. Esecuzione della chiamata HTTP
+        console.log('>>> TENTATIVO PATCH DIRETTO A:', patchUrl);
+
+        // 3. Esecuzione Chiamata
         try {
             const response = await fetch(patchUrl, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+                body: JSON.stringify(patchBody),
             });
 
             if (response.ok || response.status === 202) {
-                console.log('>>> COMMUTAZIONE ESEGUITA CON SUCCESSO!');
-            } else {
-                const errorText = await response.text();
-                console.error('Errore dal dispositivo:', errorText);
-                alert(
-                    `Il dispositivo ha risposto con errore: ${response.status}`
+                console.log(
+                    '>>> SUCCESS: Commutazione eseguita correttamente.'
                 );
+            } else {
+                alert(`Errore Dispositivo: ${response.status}`);
             }
         } catch (err) {
-            console.error('Errore di rete durante il Patch:', err);
+            console.error('ERRORE DI RETE (Probabile CORS):', err);
             alert(
-                'Errore di rete: Controlla che il dispositivo sia raggiungibile e che non ci siano blocchi CORS.'
+                'Errore CORS: Il browser blocca la chiamata al dispositivo Lynx. Vedi console per dettagli.'
             );
         }
     };
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
-        // Recuperiamo l'oggetto completo per sicurezza
         const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
-
         if (isConnected) {
-            manualNmosPatch(fullReceiver, null); // Disconnetti
+            performNmosPatch(fullReceiver, null); // Disconnetti
         } else {
-            manualNmosPatch(fullReceiver, sender); // Connetti
+            performNmosPatch(fullReceiver, sender); // Connetti
         }
     };
 

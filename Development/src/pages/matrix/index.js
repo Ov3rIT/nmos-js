@@ -4,12 +4,8 @@ import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // Caricamento Senders
-    const {
-        data: senders,
-        loading: loadingS,
-        error: errorS,
-    } = useQueryWithStore({
+    // Carichiamo tutte le risorse NMOS necessarie dallo store
+    const { data: senders, loading: loadingS } = useQueryWithStore({
         type: 'getList',
         resource: 'senders',
         payload: {
@@ -19,12 +15,7 @@ const MatrixPage = () => {
         },
     });
 
-    // Caricamento Receivers
-    const {
-        data: receivers,
-        loading: loadingR,
-        error: errorR,
-    } = useQueryWithStore({
+    const { data: receivers, loading: loadingR } = useQueryWithStore({
         type: 'getList',
         resource: 'receivers',
         payload: {
@@ -34,12 +25,7 @@ const MatrixPage = () => {
         },
     });
 
-    // Caricamento Devices
-    const {
-        data: devices,
-        loading: loadingD,
-        error: errorD,
-    } = useQueryWithStore({
+    const { data: devices, loading: loadingD } = useQueryWithStore({
         type: 'getList',
         resource: 'devices',
         payload: {
@@ -49,12 +35,7 @@ const MatrixPage = () => {
         },
     });
 
-    // Caricamento Nodes (Indispensabile per l'IP di controllo)
-    const {
-        data: nodes,
-        loading: loadingN,
-        error: errorN,
-    } = useQueryWithStore({
+    const { data: nodes, loading: loadingN } = useQueryWithStore({
         type: 'getList',
         resource: 'nodes',
         payload: {
@@ -65,8 +46,6 @@ const MatrixPage = () => {
     });
 
     if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
-    if (errorS || errorR || errorD || errorN)
-        return <Error title="Errore Registry NMOS" />;
 
     const nmosData = {
         senders: senders || [],
@@ -76,17 +55,22 @@ const MatrixPage = () => {
     };
 
     return (
-        <div className="matrix-page-container">
-            <div className="matrix-header-bar">
-                <h2>NMOS Matrix Control</h2>
-                <span>
-                    Nodes: {nmosData.nodes.length} | Senders:{' '}
-                    {nmosData.senders.length}
-                </span>
+        <div className="matrix-container">
+            <div
+                className="matrix-header"
+                style={{
+                    background: '#1a1a1a',
+                    color: 'white',
+                    padding: '15px',
+                }}
+            >
+                <h2 style={{ margin: 0 }}>NMOS IS-05 Matrix Control</h2>
+                <small>
+                    Registry: 172.16.1.110 | Nodes Found:{' '}
+                    {nmosData.nodes.length}
+                </small>
             </div>
-            <div className="matrix-body">
-                <MatrixVideo data={nmosData} />
-            </div>
+            <MatrixVideo data={nmosData} />
         </div>
     );
 };
