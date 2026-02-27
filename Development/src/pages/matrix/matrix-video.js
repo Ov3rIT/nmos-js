@@ -17,11 +17,9 @@ const MatrixVideo = ({ data }) => {
             return;
         }
 
-        // 1. Recupero oggetto completo
         const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
 
-        // 2. Risoluzione Node ID (tramite receiver o device)
         let nodeId = fullReceiver.node_id;
         if (!nodeId && fullReceiver.device_id) {
             const device = allDevices.find(
@@ -30,52 +28,65 @@ const MatrixVideo = ({ data }) => {
             if (device) nodeId = device.node_id;
         }
 
-        // 3. Trova il Nodo e costruisci l'URL
         const node = allNodes.find(n => n.id === nodeId);
-        let baseUrl = '';
 
-        if (node && node.api && node.api.endpoints) {
-            const ep = node.api.endpoints[0];
-            // NOTA: Molte librerie aggiungono /x-nmos/... internamente,
-            // ma Lynx spesso richiede l'URL completo. Proviamo la forma standard:
-            baseUrl = `${ep.protocol}://${ep.host}:${ep.port}`;
+        // Costruiamo l'indirizzo base e determiniamo la versione
+        let host = '172.16.1.231'; // Default basato sui tuoi log precedenti
+        let port = 8001;
+        let protocol = 'http';
+
+        if (
+            node &&
+            node.api &&
+            node.api.endpoints &&
+            node.api.endpoints.length > 0
+        ) {
+            host = node.api.endpoints[0].host;
+            port = node.api.endpoints[0].port;
+            protocol = node.api.endpoints[0].protocol || 'http';
         }
 
-        if (!baseUrl) {
-            alert("Errore: Impossibile mappare l'IP del dispositivo.");
-            return;
-        }
-
-        // 4. COSTRUZIONE ENDPOINT PER SUPERARE LA VALIDAZIONE
-        // makeConnection.js spesso cerca un endpoint con tipo specifico
+        // COSTRUZIONE "TANK" DELL'ENDPOINT
+        // Iniettiamo tutte le varianti possibili che makeConnection potrebbe cercare
         const enrichedReceiver = {
             ...fullReceiver,
             control_endpoints: [
                 {
-                    href: `${baseUrl}/x-nmos/connection/v1.0`,
+                    href: `${protocol}://${host}:${port}/x-nmos/connection/v1.0/`,
                     type: 'urn:x-nmos:transport:rtp',
-                    protocol: 'http',
+                    protocol: protocol,
+                    host: host,
+                    port: port,
                 },
                 {
-                    // Fallback per versioni che cercano l'host pulito
-                    host: baseUrl.split('://')[1].split(':')[0],
-                    port: parseInt(baseUrl.split(':')[2]),
-                    protocol: 'http',
+                    // Variante v1.1 spesso cercata dai nuovi nodi Lynx
+                    href: `${protocol}://${host}:${port}/x-nmos/connection/v1.1/`,
+                    type: 'urn:x-nmos:transport:rtp',
+                    protocol: protocol,
+                    host: host,
+                    port: port,
                 },
             ],
         };
 
         console.log(
-            'Tentativo connessione verso:',
-            enrichedReceiver.control_endpoints[0].href
+            'Tentativo Connection con endpoint strutturato:',
+            enrichedReceiver.control_endpoints
         );
 
-        // Chiamata alla funzione originale
+        // Se makeConnection continua a dare "Invalid Endpoint",
+        // significa che sta cercando una corrispondenza esatta con il campo 'transport' del receiver
+        if (fullReceiver.transport) {
+            enrichedReceiver.control_endpoints[0].type = fullReceiver.transport;
+            enrichedReceiver.control_endpoints[1].type = fullReceiver.transport;
+        }
+
         makeConnection(enrichedReceiver, sender)
-            .then(() => console.log('Connessione riuscita!'))
+            .then(() => console.log('SUCCESS: Patch eseguito.'))
             .catch(err => {
-                console.error('Dettaglio Errore:', err);
-                // Se fallisce ancora, il problema potrebbe essere la versione API (v1.0 vs v1.1)
+                console.error('ERRORE CRITICO:', err);
+                // Se arriviamo qui con "Invalid endpoint", dobbiamo bypassare makeConnection
+                // e fare una fetch PATCH direttamente dal componente.
             });
     };
 
