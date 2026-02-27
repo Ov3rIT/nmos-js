@@ -4,7 +4,14 @@ import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // Caricamento Senders (Encoder) - Limite alzato a 1000
+    // Configurazione query per il Registry NMOS
+    // Usiamo perPage: 100 per allinearci al test che hai fatto con successo
+    const queryParams = {
+        pagination: { page: 1, perPage: 1000 },
+        sort: { field: 'label', order: 'ASC' },
+        filter: {},
+    };
+
     const {
         data: senders,
         loading: loadingS,
@@ -12,14 +19,9 @@ const MatrixPage = () => {
     } = useQueryWithStore({
         type: 'getList',
         resource: 'senders',
-        payload: {
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'label', order: 'ASC' },
-            filter: {},
-        },
+        payload: queryParams,
     });
 
-    // Caricamento Receivers (Decoder) - Limite alzato a 1000
     const {
         data: receivers,
         loading: loadingR,
@@ -27,50 +29,27 @@ const MatrixPage = () => {
     } = useQueryWithStore({
         type: 'getList',
         resource: 'receivers',
-        payload: {
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'label', order: 'ASC' },
-            filter: {},
-        },
+        payload: queryParams,
     });
 
-    // Caricamento Devices - Indispensabile per collegare Receiver e Node
-    const {
-        data: devices,
-        loading: loadingD,
-        error: errorD,
-    } = useQueryWithStore({
+    const { data: devices, loading: loadingD } = useQueryWithStore({
         type: 'getList',
         resource: 'devices',
-        payload: {
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'id', order: 'ASC' },
-            filter: {},
-        },
+        payload: { ...queryParams, sort: { field: 'id', order: 'ASC' } },
     });
 
-    // Caricamento Nodes - Fondamentale per recuperare gli IP di controllo (IS-05)
-    const {
-        data: nodes,
-        loading: loadingN,
-        error: errorN,
-    } = useQueryWithStore({
+    const { data: nodes, loading: loadingN } = useQueryWithStore({
         type: 'getList',
         resource: 'nodes',
-        payload: {
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'id', order: 'ASC' },
-            filter: {},
-        },
+        payload: { ...queryParams, sort: { field: 'id', order: 'ASC' } },
     });
 
-    // Gestione stati di caricamento ed errore
     if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
-    if (errorS || errorR || errorD || errorN) {
-        return <Error title="Errore nel recupero dati dal Registry NMOS" />;
-    }
+    if (errorS || errorR)
+        return (
+            <Error title="Errore durante la lettura dal Query Service NMOS" />
+        );
 
-    // Preparazione dell'oggetto data per MatrixVideo
     const nmosData = {
         senders: senders || [],
         receivers: receivers || [],
@@ -79,31 +58,26 @@ const MatrixPage = () => {
     };
 
     return (
-        <div className="matrix-wrapper">
-            {/* Header informativo */}
+        <div className="matrix-page">
             <div
-                className="matrix-info-header"
+                className="matrix-header-status"
                 style={{
-                    padding: '10px 20px',
-                    background: '#24292e',
-                    color: '#ffffff',
+                    padding: '12px 20px',
+                    backgroundColor: '#1e1e1e',
+                    color: '#00d1b2',
+                    borderBottom: '1px solid #333',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderBottom: '2px solid #007bff',
                 }}
             >
-                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
-                    NMOS BROADCAST MATRIX
-                </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-                    Totale Senders: {nmosData.senders.length} | Totale
-                    Receivers: {nmosData.receivers.length}
-                </div>
+                <strong>NMOS CONTROL PANEL v1.3</strong>
+                <span>
+                    {nmosData.senders.length} Senders |{' '}
+                    {nmosData.receivers.length} Receivers
+                </span>
             </div>
 
-            {/* Area Matrice */}
-            <div className="matrix-container" style={{ padding: '20px' }}>
+            <div className="matrix-main-content">
                 <MatrixVideo data={nmosData} />
             </div>
         </div>
