@@ -38,7 +38,7 @@ const MatrixPage = () => {
     // Aggiungiamo i NODES (servono per trovare l'IP di controllo IS-05)
     const { data: nodes, loading: loadingN } = useQueryWithStore({
         type: 'getList',
-        resource: 'nodes',
+        resource: 'node',
         payload: {
             pagination: { page: 1, perPage: 1000 },
             sort: { field: 'id', order: 'ASC' },

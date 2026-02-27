@@ -13,61 +13,73 @@ const MatrixVideo = ({ data }) => {
     const allDevices = normalize(data?.devices);
     const allNodes = normalize(data?.nodes);
 
-    const getBaseType = item => {
-        if (!item) return 'unknown';
-        const val = (item.format || item.caps?.format || '').toLowerCase();
-        if (val.includes('video')) return 'video';
-        if (val.includes('audio')) return 'audio';
-        return 'ancillary';
-    };
-
-    const currentConnections = {};
-    allReceivers.forEach(r => {
-        if (r.subscription?.sender_id) {
-            currentConnections[r.id] = r.subscription.sender_id;
-        }
-    });
-
     const handleToggleConnection = (receiver, sender, isConnected) => {
         if (isConnected) {
             makeConnection(receiver, null);
             return;
         }
 
-        // --- 1. RECUPERO URL DALL'API DEL NODE (Specifico Lynx) ---
-        let control_endpoints = [];
-        const node = allNodes.find(n => n.id === receiver.node_id);
+        // 1. Cerchiamo il nodo associato
+        let node = allNodes.find(n => n.id === receiver.node_id);
 
-        if (node && node.api && node.api.endpoints) {
-            // Trasformiamo gli endpoints del nodo nel formato richiesto da IS-05
+        // 2. Se non lo trova per ID, cerchiamo per corrispondenza nel Device
+        if (!node) {
+            const dev = allDevices.find(d => d.id === receiver.device_id);
+            if (dev) node = allNodes.find(n => n.id === dev.node_id);
+        }
+
+        let control_endpoints = [];
+
+        // 3. Estrazione Endpoint (Logica specifica per Lynx CDE1922)
+        if (node?.api?.endpoints) {
             control_endpoints = node.api.endpoints.map(ep => ({
                 host: ep.host,
                 port: ep.port,
                 protocol: ep.protocol || 'http',
-                // Costruiamo l'href standard NMOS Connection Management
-                href: `${ep.protocol || 'http'}://${ep.host}:${ep.port}/x-nmos/connection/${node.api.versions.includes('v1.1') ? 'v1.1' : 'v1.0'}`,
+                href: `${ep.protocol || 'http'}://${ep.host}:${ep.port}/x-nmos/connection/v1.0`,
             }));
         }
 
+        // FALLBACK DISPERATO: Se il mapping fallisce ancora, usiamo l'IP del sender come base
+        // (Spesso i nodi Lynx hanno le API sulla stessa subnet)
+        if (
+            control_endpoints.length === 0 &&
+            sender.description?.includes('172.')
+        ) {
+            const guessedIp = sender.description.match(/\d+\.\d+\.\d+\.\d+/);
+            if (guessedIp) {
+                control_endpoints = [
+                    {
+                        href: `http://${guessedIp[0]}:8001/x-nmos/connection/v1.0`,
+                    },
+                ];
+            }
+        }
+
         if (control_endpoints.length === 0) {
-            alert("Errore: Impossibile mappare l'API di controllo dal Node.");
+            console.error(
+                'Mapping fallito. Receiver:',
+                receiver,
+                'Nodes:',
+                allNodes
+            );
+            alert(
+                "Errore: Impossibile mappare l'API del nodo. Verifica la console (F12)."
+            );
             return;
         }
 
-        // --- 2. PREPARAZIONE OGGETTI ---
-        const enrichedReceiver = {
-            ...receiver,
-            control_endpoints: control_endpoints,
-        };
+        const enrichedReceiver = { ...receiver, control_endpoints };
+        console.log('>>> PATCHING VERSO:', control_endpoints[0].href);
 
-        console.log(`Esecuzione Patch su: ${control_endpoints[0].href}`);
-
-        try {
-            makeConnection(enrichedReceiver, sender);
-        } catch (err) {
-            console.error('Errore IS-05:', err);
-        }
+        makeConnection(enrichedReceiver, sender);
     };
+
+    const currentConnections = {};
+    allReceivers.forEach(r => {
+        if (r.subscription?.sender_id)
+            currentConnections[r.id] = r.subscription.sender_id;
+    });
 
     return (
         <MatrixBase
