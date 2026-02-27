@@ -19,30 +19,38 @@ const MatrixVideo = ({ data }) => {
             return;
         }
 
-        // --- FIX PER UNDEFINED ---
-        // Se receiver.node_id è undefined, cerchiamo l'oggetto originale completo
-        // usando l'id del receiver nell'elenco totale dei receiver caricati
+        // 1. Recuperiamo l'oggetto completo
         const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
 
-        console.log('Dati Receiver per Patch:', fullReceiver);
+        // 2. TENTATIVO DI RECUPERO NODE_ID
+        let nodeId = fullReceiver.node_id;
 
-        const nodeId = fullReceiver.node_id;
+        // Se manca il node_id, lo cerchiamo tramite il Device
+        if (!nodeId && fullReceiver.device_id) {
+            console.log(
+                'node_id assente, lo cerco tramite device_id:',
+                fullReceiver.device_id
+            );
+            const device = allDevices.find(
+                d => d.id === fullReceiver.device_id
+            );
+            if (device) {
+                nodeId = device.node_id;
+            }
+        }
 
         if (!nodeId) {
             console.error(
-                'ERRORE: Il receiver non ha un node_id associato.',
+                'ERRORE: Impossibile risalire al Node ID (nemmeno tramite Device).',
                 fullReceiver
             );
-            alert(
-                'Errore tecnico: Il dispositivo non ha fornito un ID di riferimento (Node ID).'
-            );
+            alert('Errore: Dati NMOS incompleti per questo apparato.');
             return;
         }
 
-        // 1. Cerchiamo il Node
+        // 3. CERCHIAMO IL NODO PER TROVARE L'IP
         const node = allNodes.find(n => n.id === nodeId);
-
         let control_href = '';
 
         if (node && node.api && node.api.endpoints) {
@@ -58,22 +66,21 @@ const MatrixVideo = ({ data }) => {
 
         if (!control_href) {
             console.error(
-                'Mapping fallito per il nodo:',
+                'Mapping fallito. Node ID trovato:',
                 nodeId,
-                'Nodi disponibili:',
-                allNodes
+                'Ma il nodo non ha endpoint o href.'
             );
-            alert(`Impossibile trovare l'IP per il nodo: ${nodeId}`);
+            alert(`Impossibile trovare l'indirizzo IP per il nodo: ${nodeId}`);
             return;
         }
 
-        // --- ESECUZIONE PATCH ---
+        // 4. ESECUZIONE PATCH
         const enrichedReceiver = {
             ...fullReceiver,
             control_endpoints: [{ href: control_href }],
         };
 
-        console.log(`>>> INVIO PATCH A: ${control_href}`);
+        console.log(`>>> PATCH INVIATO A: ${control_href}`);
         makeConnection(enrichedReceiver, sender);
     };
 
