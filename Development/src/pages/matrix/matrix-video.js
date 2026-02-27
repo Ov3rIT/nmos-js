@@ -13,15 +13,12 @@ const MatrixVideo = ({ data }) => {
     const allDevices = normalize(data?.devices);
     const allNodes = normalize(data?.nodes);
 
-    // FIX TIPO: Usiamo una regex per catturare 'video', 'audio' o 'anc' dentro la stringa URN
     const getBaseType = item => {
         if (!item) return 'unknown';
         const val = (item.format || item.caps?.format || '').toLowerCase();
         if (val.includes('video')) return 'video';
         if (val.includes('audio')) return 'audio';
-        if (val.includes('ancillary') || val.includes('data'))
-            return 'ancillary';
-        return 'unknown';
+        return 'ancillary';
     };
 
     const currentConnections = {};
@@ -37,70 +34,38 @@ const MatrixVideo = ({ data }) => {
             return;
         }
 
-        // --- 1. VERIFICA TIPO (Flessibile) ---
-        const sType = getBaseType(sender);
-        const rType = getBaseType(receiver);
-        console.log(
-            `Patching: ${sender.label} (${sType}) -> ${receiver.label} (${rType})`
-        );
+        // --- 1. RECUPERO URL DALL'API DEL NODE (Specifico Lynx) ---
+        let control_endpoints = [];
+        const node = allNodes.find(n => n.id === receiver.node_id);
 
-        // Permettiamo il patch se i tipi coincidono o se uno è unknown
-        if (sType !== rType && sType !== 'unknown' && rType !== 'unknown') {
-            const procedi = window.confirm(
-                `Attenzione: Tipi diversi (${sType} vs ${rType}). Vuoi procedere comunque?`
-            );
-            if (!procedi) return;
+        if (node && node.api && node.api.endpoints) {
+            // Trasformiamo gli endpoints del nodo nel formato richiesto da IS-05
+            control_endpoints = node.api.endpoints.map(ep => ({
+                host: ep.host,
+                port: ep.port,
+                protocol: ep.protocol || 'http',
+                // Costruiamo l'href standard NMOS Connection Management
+                href: `${ep.protocol || 'http'}://${ep.host}:${ep.port}/x-nmos/connection/${node.api.versions.includes('v1.1') ? 'v1.1' : 'v1.0'}`,
+            }));
         }
 
-        // --- 2. RECUPERO ENDPOINT (Lookup gerarchico) ---
-        let endpoints = receiver.control_endpoints || [];
-
-        // Se il receiver è vuoto, cerchiamo nel Device associato
-        if (endpoints.length === 0) {
-            const dev = allDevices.find(d => d.id === receiver.device_id);
-            if (dev?.control_endpoints && dev.control_endpoints.length > 0) {
-                endpoints = dev.control_endpoints;
-            }
-        }
-
-        // Se è ancora vuoto, cerchiamo nel Node
-        if (endpoints.length === 0) {
-            const node = allNodes.find(n => n.id === receiver.node_id);
-            if (node?.services) {
-                // Cerchiamo il servizio "connection" (IS-05)
-                const connService = node.services.find(s =>
-                    s.type.toLowerCase().includes('connection')
-                );
-                if (connService) {
-                    endpoints = [{ href: connService.href }];
-                }
-            }
-        }
-
-        // --- 3. VERIFICA FINALE ED ESECUZIONE ---
-        if (endpoints.length === 0) {
-            console.error('Dati ricevuti per lookup fallito:', {
-                receiver,
-                nodes: allNodes,
-            });
-            alert(
-                "Errore: Impossibile trovare l'URL di controllo IS-05 per questo dispositivo."
-            );
+        if (control_endpoints.length === 0) {
+            alert("Errore: Impossibile mappare l'API di controllo dal Node.");
             return;
         }
 
-        // Prepariamo l'oggetto come lo vuole makeConnection
+        // --- 2. PREPARAZIONE OGGETTI ---
         const enrichedReceiver = {
             ...receiver,
-            control_endpoints: endpoints,
+            control_endpoints: control_endpoints,
         };
 
-        console.log('Endpoint trovato:', endpoints);
+        console.log(`Esecuzione Patch su: ${control_endpoints[0].href}`);
 
         try {
             makeConnection(enrichedReceiver, sender);
         } catch (err) {
-            console.error('Errore durante makeConnection:', err);
+            console.error('Errore IS-05:', err);
         }
     };
 
