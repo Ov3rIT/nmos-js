@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQueryWithStore, Loading } from 'react-admin';
+import { Loading, useQueryWithStore } from 'react-admin';
 import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
