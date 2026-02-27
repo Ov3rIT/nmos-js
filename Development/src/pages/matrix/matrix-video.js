@@ -1,5 +1,6 @@
 import React from 'react';
 import MatrixBase from './MatrixBase';
+import makeConnection from '../../components/makeConnection';
 
 const MatrixVideo = ({ data }) => {
     const normalize = items =>
@@ -10,78 +11,62 @@ const MatrixVideo = ({ data }) => {
     const allDevices = normalize(data?.devices);
     const allNodes = normalize(data?.nodes);
 
-    // FUNZIONE DI PATCH DIRETTA (IS-05)
-    const performNmosPatch = async (receiver, sender) => {
-        // 1. Risoluzione IP del Nodo (come prima)
-        let nodeId = receiver.node_id;
-        if (!nodeId && receiver.device_id) {
-            const dev = allDevices.find(d => d.id === receiver.device_id);
-            nodeId = dev?.node_id;
-        }
-        const node = allNodes.find(n => n.id === nodeId);
-        if (!node) return;
-
-        const ep = node.api.endpoints[0];
-        const baseUrl = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/v1.0/single/receivers/${receiver.id}`;
-
-        try {
-            let transportParams = {};
-
-            if (sender) {
-                // --- CONNESSIONE ---
-                // Recuperiamo i transport_params dal sender (spesso sono nei tags o ricavabili)
-                // Nota: In un'implementazione completa dovresti fare una GET al sender.
-                // Qui ipotizziamo di mappare i parametri base.
-                transportParams = {
-                    sender_id: sender.id,
-                    master_enable: true,
-                    activation: { mode: 'activate_immediate' },
-                    transport_params: [
-                        {
-                            multicast_ip: sender.manifest_href || '239.1.1.1', // Esempio: andrebbe letto dal sender
-                            interface_ip: '172.16.1.10', // L'IP della tua interfaccia media
-                            destination_port: 5000,
-                        },
-                    ],
-                };
-            } else {
-                // --- DISCONNESSIONE (Parking) ---
-                transportParams = {
-                    sender_id: null,
-                    master_enable: false,
-                    activation: { mode: 'activate_immediate' },
-                };
-            }
-
-            console.log('>>> INVIO PATCH A /staged:', transportParams);
-
-            const response = await fetch(`${baseUrl}/staged`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transportParams),
-            });
-
-            if (response.ok) {
-                console.log(
-                    '>>> SUCCESS: Parametri inviati a STAGED e ATTIVATI.'
-                );
-            } else {
-                const err = await response.text();
-                console.error('Errore IS-05:', err);
-            }
-        } catch (err) {
-            console.error('Errore di rete:', err);
-        }
-    };
-
     const handleToggleConnection = (receiver, sender, isConnected) => {
+        // 1. Recupero oggetto completo per avere i metadati NMOS (caps, transport, ecc.)
         const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
-        if (isConnected) {
-            performNmosPatch(fullReceiver, null); // Disconnetti
-        } else {
-            performNmosPatch(fullReceiver, sender); // Connetti
+
+        // 2. Risoluzione Nodo (fondamentale perché makeConnection usa i control_endpoints)
+        let nodeId = fullReceiver.node_id;
+        if (!nodeId && fullReceiver.device_id) {
+            const dev = allDevices.find(d => d.id === fullReceiver.device_id);
+            if (dev) nodeId = dev.node_id;
         }
+
+        const node = allNodes.find(n => n.id === nodeId);
+
+        if (!node || !node.api?.endpoints) {
+            console.error(
+                'Nodo non trovato per il receiver:',
+                fullReceiver.label
+            );
+            return;
+        }
+
+        // 3. Costruzione dell'oggetto conforme alla libreria
+        // makeConnection.js scansiona questo array cercando l'API di Connection Management
+        const ep = node.api.endpoints[0];
+        const version =
+            node.api.versions && node.api.versions.includes('v1.1')
+                ? 'v1.1'
+                : 'v1.0';
+
+        const enrichedReceiver = {
+            ...fullReceiver,
+            control_endpoints: [
+                {
+                    // La libreria concatena automaticamente le rotte se l'href è corretto
+                    href: `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/`,
+                    type: fullReceiver.transport || 'urn:x-nmos:transport:rtp',
+                },
+            ],
+        };
+
+        console.log(
+            `Lancio makeConnection per ${enrichedReceiver.label} verso ${sender?.label || 'PARKING'}`
+        );
+
+        // 4. Esecuzione tramite la funzione originale del repository
+        // Se sender è null, la libreria gestisce automaticamente la disconnessione
+        makeConnection(enrichedReceiver, isConnected ? null : sender)
+            .then(() => {
+                console.log('SUCCESS: Operazione completata dalla libreria.');
+            })
+            .catch(err => {
+                // Se qui vedi ancora "Invalid endpoint", significa che il 'type' nell'endpoint
+                // non coincide esattamente con il 'transport' del receiver nel Registry.
+                console.error('ERRORE LIBRERIA:', err);
+            });
     };
 
     const currentConnections = {};
