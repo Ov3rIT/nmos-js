@@ -4,28 +4,42 @@ import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // Carichiamo tutte le risorse NMOS necessarie dallo store
-    const { data: senders, loading: loadingS } = useQueryWithStore({
+    // Caricamento Senders (Encoder) - Limite alzato a 1000
+    const {
+        data: senders,
+        loading: loadingS,
+        error: errorS,
+    } = useQueryWithStore({
         type: 'getList',
         resource: 'senders',
         payload: {
             pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'id', order: 'ASC' },
+            sort: { field: 'label', order: 'ASC' },
             filter: {},
         },
     });
 
-    const { data: receivers, loading: loadingR } = useQueryWithStore({
+    // Caricamento Receivers (Decoder) - Limite alzato a 1000
+    const {
+        data: receivers,
+        loading: loadingR,
+        error: errorR,
+    } = useQueryWithStore({
         type: 'getList',
         resource: 'receivers',
         payload: {
             pagination: { page: 1, perPage: 1000 },
-            sort: { field: 'id', order: 'ASC' },
+            sort: { field: 'label', order: 'ASC' },
             filter: {},
         },
     });
 
-    const { data: devices, loading: loadingD } = useQueryWithStore({
+    // Caricamento Devices - Indispensabile per collegare Receiver e Node
+    const {
+        data: devices,
+        loading: loadingD,
+        error: errorD,
+    } = useQueryWithStore({
         type: 'getList',
         resource: 'devices',
         payload: {
@@ -35,7 +49,12 @@ const MatrixPage = () => {
         },
     });
 
-    const { data: nodes, loading: loadingN } = useQueryWithStore({
+    // Caricamento Nodes - Fondamentale per recuperare gli IP di controllo (IS-05)
+    const {
+        data: nodes,
+        loading: loadingN,
+        error: errorN,
+    } = useQueryWithStore({
         type: 'getList',
         resource: 'nodes',
         payload: {
@@ -45,8 +64,13 @@ const MatrixPage = () => {
         },
     });
 
+    // Gestione stati di caricamento ed errore
     if (loadingS || loadingR || loadingD || loadingN) return <Loading />;
+    if (errorS || errorR || errorD || errorN) {
+        return <Error title="Errore nel recupero dati dal Registry NMOS" />;
+    }
 
+    // Preparazione dell'oggetto data per MatrixVideo
     const nmosData = {
         senders: senders || [],
         receivers: receivers || [],
@@ -55,22 +79,33 @@ const MatrixPage = () => {
     };
 
     return (
-        <div className="matrix-container">
+        <div className="matrix-wrapper">
+            {/* Header informativo */}
             <div
-                className="matrix-header"
+                className="matrix-info-header"
                 style={{
-                    background: '#1a1a1a',
-                    color: 'white',
-                    padding: '15px',
+                    padding: '10px 20px',
+                    background: '#24292e',
+                    color: '#ffffff',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '2px solid #007bff',
                 }}
             >
-                <h2 style={{ margin: 0 }}>NMOS IS-05 Matrix Control</h2>
-                <small>
-                    Registry: 172.16.1.110 | Nodes Found:{' '}
-                    {nmosData.nodes.length}
-                </small>
+                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                    NMOS BROADCAST MATRIX
+                </div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                    Totale Senders: {nmosData.senders.length} | Totale
+                    Receivers: {nmosData.receivers.length}
+                </div>
             </div>
-            <MatrixVideo data={nmosData} />
+
+            {/* Area Matrice */}
+            <div className="matrix-container" style={{ padding: '20px' }}>
+                <MatrixVideo data={nmosData} />
+            </div>
         </div>
     );
 };
