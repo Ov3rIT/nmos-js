@@ -10,14 +10,11 @@ const MatrixVideo = ({ data }) => {
         Audio: true,
         Anc: true,
     });
-
-    // Stato delle connessioni (mappa receiver_id -> sender_id)
     const [connections, setConnections] = useState({});
 
     const primaryColor = 'rgb(2, 112, 101)';
     const lightBg = 'rgb(245, 252, 251)';
 
-    // Elaborazione dati (Filtri e Ordinamento)
     const processed = useMemo(() => {
         const normalize = items =>
             Array.isArray(items) ? items : Object.values(items || {});
@@ -65,12 +62,24 @@ const MatrixVideo = ({ data }) => {
         };
     }, [data, activeFilters]);
 
-    // LOGICA DI PATCHING NMOS IS-05
+    // LOGICA DI PATCHING DINAMICA
     const handleConnect = async (receiver, sender, shouldConnect) => {
-        // 1. Assicuriamoci che l'ID sia pulito e l'URL segua lo standard IS-05
-        // Nota: Ho rimosso il prefisso 'http://' se già presente nell'ID e aggiunto un check sulla versione
-        const baseUrl = `http://${window.location.hostname}:8010/x-nmos/connection/v1.1`;
-        const endpoint = `${baseUrl}/single/receivers/${receiver.id}/staged`;
+        // 1. Cerchiamo l'URL Connection Management (IS-05) nei controlli del receiver
+        const is05Control = receiver.controls?.find(c =>
+            c.type.includes('sr-ctrl')
+        );
+
+        let endpoint = '';
+
+        if (is05Control) {
+            // Se il device espone l'URL completo (es: http://192.168.1.50:8010/x-nmos/connection/v1.1)
+            endpoint = `${is05Control.href.replace(/\/$/, '')}/single/receivers/${receiver.id}/staged`;
+        } else {
+            // Fallback: se non c'è il controllo, proviamo l'IP del Registry (ma spesso fallisce con 404)
+            endpoint = `http://${window.location.hostname}:8010/x-nmos/connection/v1.1/single/receivers/${receiver.id}/staged`;
+        }
+
+        console.log(`📡 Sending PATCH to: ${endpoint}`);
 
         const payload = {
             sender_id: shouldConnect ? sender.id : null,
@@ -78,17 +87,10 @@ const MatrixVideo = ({ data }) => {
             activation: { mode: 'activate_immediate' },
         };
 
-        // Log di debug per ispezionare l'URL esatto in console
-        console.log('🔗 Tentativo di patch su:', endpoint);
-        console.log('📦 Payload:', payload);
-
         try {
             const response = await fetch(endpoint, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
@@ -97,17 +99,13 @@ const MatrixVideo = ({ data }) => {
                     ...prev,
                     [receiver.id]: shouldConnect ? sender.id : null,
                 }));
-                console.log('✅ Connessione riuscita');
+                console.log('✅ Success!');
             } else {
-                // Leggiamo il corpo dell'errore per capire PERCHÉ è 404
-                const errorData = await response.json().catch(() => ({}));
-                console.error(
-                    `❌ Errore ${response.status}:`,
-                    errorData.error || response.statusText
-                );
+                const errText = await response.text();
+                console.error(`❌ Server Error (${response.status}):`, errText);
             }
         } catch (error) {
-            console.error('❌ Errore di rete:', error);
+            console.error('❌ Network Error:', error);
         }
     };
 
@@ -122,7 +120,7 @@ const MatrixVideo = ({ data }) => {
                 flexDirection: 'column',
             }}
         >
-            <Box display="flex" alignItems="center" mb={2} gridGap={10}>
+            <Box display="flex" alignItems="center" mb={2} gap="10px">
                 <Typography
                     variant="button"
                     style={{ color: primaryColor, fontWeight: 'bold' }}
@@ -166,7 +164,7 @@ const MatrixVideo = ({ data }) => {
                     receivers={processed.receivers}
                     devices={processed.devices}
                     connections={connections}
-                    onConnect={handleConnect} // Passiamo la logica reale
+                    onConnect={handleConnect}
                     primaryColor={primaryColor}
                     lightBg={lightBg}
                 />
