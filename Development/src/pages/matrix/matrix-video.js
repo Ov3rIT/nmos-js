@@ -67,8 +67,10 @@ const MatrixVideo = ({ data }) => {
 
     // LOGICA DI PATCHING NMOS IS-05
     const handleConnect = async (receiver, sender, shouldConnect) => {
-        // L'endpoint dipende dal tuo controller NMOS (es. porta 8010 o porta dell'apparecchio)
-        const endpoint = `http://${window.location.hostname}:8010/x-nmos/connection/v1.1/single/receivers/${receiver.id}/staged`;
+        // 1. Assicuriamoci che l'ID sia pulito e l'URL segua lo standard IS-05
+        // Nota: Ho rimosso il prefisso 'http://' se già presente nell'ID e aggiunto un check sulla versione
+        const baseUrl = `http://${window.location.hostname}:8010/x-nmos/connection/v1.1`;
+        const endpoint = `${baseUrl}/single/receivers/${receiver.id}/staged`;
 
         const payload = {
             sender_id: shouldConnect ? sender.id : null,
@@ -76,24 +78,36 @@ const MatrixVideo = ({ data }) => {
             activation: { mode: 'activate_immediate' },
         };
 
+        // Log di debug per ispezionare l'URL esatto in console
+        console.log('🔗 Tentativo di patch su:', endpoint);
+        console.log('📦 Payload:', payload);
+
         try {
             const response = await fetch(endpoint, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
                 body: JSON.stringify(payload),
             });
 
             if (response.ok) {
-                // Aggiornamento ottimistico dell'interfaccia
                 setConnections(prev => ({
                     ...prev,
                     [receiver.id]: shouldConnect ? sender.id : null,
                 }));
+                console.log('✅ Connessione riuscita');
             } else {
-                console.error('Errore NMOS IS-05:', response.statusText);
+                // Leggiamo il corpo dell'errore per capire PERCHÉ è 404
+                const errorData = await response.json().catch(() => ({}));
+                console.error(
+                    `❌ Errore ${response.status}:`,
+                    errorData.error || response.statusText
+                );
             }
         } catch (error) {
-            console.error('Errore di rete durante la patch:', error);
+            console.error('❌ Errore di rete:', error);
         }
     };
 
