@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import MatrixBase from './MatrixBase';
-import { ThemeContext } from '../theme/ThemeContext'; // Importiamo il contesto del tema
+import { ThemeContext } from '../../theme/ThemeContext'; // Importiamo il contesto del tema
 
 const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext); // Recuperiamo il tema globale
