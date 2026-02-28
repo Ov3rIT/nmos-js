@@ -69,12 +69,12 @@ const MatrixVideo = ({ data }) => {
         const registryBase = `http://${registryIp}:${registryPort}/x-nmos/query/v1.3`;
 
         try {
-            // --- STEP 1: RISOLUZIONE DEVICE (IS-04) ---
+            // --- STEP 1: RISOLUZIONE DEVICE DEL RECEIVER ---
             console.log(`🔍 Risoluzione device per: ${receiver.label}`);
             const devRes = await fetch(
                 `${registryBase}/devices/${receiver.device_id}`
             );
-            if (!devRes.ok) throw new Error('Device non trovato');
+            if (!devRes.ok) throw new Error('Device ricevente non trovato');
             const devData = await devRes.json();
 
             const control = devData.controls?.find(c =>
@@ -84,36 +84,38 @@ const MatrixVideo = ({ data }) => {
 
             const is05Endpoint = `${control.href.replace(/\/$/, '')}/single/receivers/${receiver.id}/staged`;
 
-            // PREPARAZIONE PAYLOAD BASE
             let payload = {
                 master_enable: true,
                 activation: { mode: 'activate_immediate' },
             };
 
             if (shouldConnect) {
-                // --- STEP 2: RECUPERO SDP DAL SENDER (IS-04) ---
-                console.log(`📡 Recupero Flow per sender: ${sender.label}`);
-                // Un sender ha un flow_id associato
-                const flowRes = await fetch(
-                    `${registryBase}/flows/${sender.flow_id}`
+                // --- STEP 2: RECUPERO INFO SENDER ---
+                const senderRes = await fetch(
+                    `${registryBase}/senders/${sender.id}`
                 );
-                if (!flowRes.ok)
-                    throw new Error('Flow non trovato per questo sender');
-                const flowData = await flowRes.json();
+                if (!senderRes.ok)
+                    throw new Error('Dettagli sender non trovati');
+                const senderData = await senderRes.json();
 
-                if (!flowData.manifest_href)
-                    throw new Error('SDP non disponibile per questo flow');
+                if (!senderData.manifest_href)
+                    throw new Error('Il sender non ha manifest_href');
 
-                // --- STEP 3: DOWNLOAD DEL CONTENUTO SDP ---
-                console.log(
-                    `📄 Scaricamento SDP da: ${flowData.manifest_href}`
-                );
-                const sdpRes = await fetch(flowData.manifest_href);
-                if (!sdpRes.ok)
-                    throw new Error('Impossibile scaricare il file SDP');
-                const sdpText = await sdpRes.text();
+                // --- STEP 3: DOWNLOAD E PULIZIA SDP ---
+                console.log(`📄 Download SDP da: ${senderData.manifest_href}`);
+                const sdpRes = await fetch(senderData.manifest_href);
+                if (!sdpRes.ok) throw new Error('Errore download SDP');
+                let sdpText = await sdpRes.text();
 
-                // --- STEP 4: COSTRUZIONE PAYLOAD CON SDP ---
+                // Pulizia: Rimuoviamo eventuali righe di log della curl (es. "shutting down...")
+                // Teniamo solo le righe che iniziano con una lettera seguita da "=" (standard SDP)
+                sdpText = sdpText
+                    .split('\n')
+                    .filter(line => /^[a-z]=/.test(line.trim()))
+                    .join('\n');
+
+                console.log('✅ SDP Semplificato:\n', sdpText);
+
                 payload = {
                     ...payload,
                     sender_id: sender.id,
@@ -123,12 +125,11 @@ const MatrixVideo = ({ data }) => {
                     },
                 };
             } else {
-                // DISCONNESSIONE
                 payload.sender_id = null;
+                payload.transport_file = null;
             }
 
-            // --- STEP 5: PATCH FINALE AL DEVICE ---
-            console.log(`🚀 Iniezione SDP su: ${is05Endpoint}`);
+            // --- STEP 4: PATCH AL DEVICE ---
             const patchRes = await fetch(is05Endpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -140,13 +141,13 @@ const MatrixVideo = ({ data }) => {
                     ...prev,
                     [receiver.id]: shouldConnect ? sender.id : null,
                 }));
-                console.log('✅ Connessione SDP completata!');
+                console.log('✅ SDP Injected successfully!');
             } else {
                 const err = await patchRes.text();
-                console.error('❌ Errore Patch Device:', err);
+                console.error('❌ Device Patch Error:', err);
             }
         } catch (error) {
-            console.error('❌ Errore critico:', error.message);
+            console.error('❌ Errore:', error.message);
         }
     };
 
