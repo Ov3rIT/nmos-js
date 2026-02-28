@@ -17,14 +17,14 @@ const MatrixBase = ({
     connections,
     onConnect,
     primaryColor,
-    lightBg,
+    darkBg,
+    nodeBg,
 }) => {
     const getDeviceLabel = deviceId => {
         const dev = devices?.find(d => d.id === deviceId);
         return dev ? dev.label : 'Unknown Device';
     };
 
-    // Raggruppamento SENDER (Header)
     const senderGroups = senders.reduce((acc, s) => {
         const devId = s.device_id;
         if (!acc[devId])
@@ -33,7 +33,6 @@ const MatrixBase = ({
         return acc;
     }, {});
 
-    // Raggruppamento RECEIVER (Rows)
     const receiverGroups = receivers.reduce((acc, r) => {
         const devId = r.device_id;
         if (!acc[devId])
@@ -49,22 +48,22 @@ const MatrixBase = ({
     return (
         <TableContainer
             component={Paper}
-            style={{ backgroundColor: '#fff', boxShadow: 'none' }}
+            style={{ backgroundColor: darkBg, boxShadow: 'none' }}
         >
             <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
                         <TableCell
                             style={{
-                                backgroundColor: lightBg,
-                                borderBottom: `2px solid ${primaryColor}`,
+                                backgroundColor: '#121212',
+                                borderBottom: `1px solid ${primaryColor}`,
                                 width: 40,
                             }}
                         />
                         <TableCell
                             style={{
-                                backgroundColor: lightBg,
-                                borderBottom: `2px solid ${primaryColor}`,
+                                backgroundColor: '#121212',
+                                borderBottom: `1px solid ${primaryColor}`,
                                 minWidth: 160,
                             }}
                         />
@@ -78,8 +77,8 @@ const MatrixBase = ({
                                     color: '#fff',
                                     fontWeight: 'bold',
                                     borderLeft:
-                                        '1px solid rgba(255,255,255,0.2)',
-                                    padding: '4px',
+                                        '1px solid rgba(255,255,255,0.1)',
+                                    padding: '6px',
                                     fontSize: '0.75rem',
                                 }}
                             >
@@ -91,8 +90,8 @@ const MatrixBase = ({
                         <TableCell
                             colSpan={2}
                             style={{
-                                backgroundColor: lightBg,
-                                color: primaryColor,
+                                backgroundColor: '#121212',
+                                color: '#fff',
                                 fontWeight: 'bold',
                             }}
                         >
@@ -103,9 +102,10 @@ const MatrixBase = ({
                                 key={sender.id}
                                 align="center"
                                 style={{
-                                    backgroundColor: lightBg,
-                                    color: '#555',
+                                    backgroundColor: '#121212',
+                                    color: '#aaa',
                                     padding: '10px 5px',
+                                    borderBottom: `1px solid ${primaryColor}44`,
                                 }}
                             >
                                 <div
@@ -124,13 +124,15 @@ const MatrixBase = ({
                 </TableHead>
 
                 <TableBody>
-                    {receivers.map((receiver, index) => {
+                    {receivers.map(receiver => {
                         const group = receiverGroups[receiver.device_id];
                         const isFirstInGroup = group.firstId === receiver.id;
 
                         return (
-                            <TableRow key={receiver.id} hover>
-                                {/* Cella Device (Verticale) */}
+                            <TableRow
+                                key={receiver.id}
+                                style={{ backgroundColor: darkBg }}
+                            >
                                 {isFirstInGroup && (
                                     <TableCell
                                         rowSpan={group.count}
@@ -142,7 +144,7 @@ const MatrixBase = ({
                                             padding: '8px 4px',
                                             width: 40,
                                             borderBottom:
-                                                '1px solid rgba(255,255,255,0.2)',
+                                                '1px solid rgba(255,255,255,0.1)',
                                         }}
                                     >
                                         <div
@@ -150,6 +152,7 @@ const MatrixBase = ({
                                                 writingMode: 'vertical-rl',
                                                 transform: 'rotate(180deg)',
                                                 fontSize: '0.75rem',
+                                                letterSpacing: '1px',
                                             }}
                                         >
                                             {group.label}
@@ -157,19 +160,19 @@ const MatrixBase = ({
                                     </TableCell>
                                 )}
 
-                                {/* Cella Canale Receiver */}
                                 <TableCell
                                     style={{
-                                        backgroundColor: '#fff',
-                                        borderRight: `1px solid ${primaryColor}22`,
+                                        backgroundColor: nodeBg,
+                                        borderRight: `1px solid rgba(255,255,255,0.05)`,
+                                        borderBottom: `1px solid rgba(255,255,255,0.05)`,
                                         padding: '8px',
                                     }}
                                 >
                                     <Typography
                                         variant="caption"
                                         style={{
-                                            color: '#333',
-                                            fontWeight: 600,
+                                            color: '#fff',
+                                            fontWeight: 500,
                                         }}
                                     >
                                         {receiver.label}
@@ -193,13 +196,14 @@ const MatrixBase = ({
                                             style={{
                                                 cursor: 'pointer',
                                                 backgroundColor: isConnected
-                                                    ? `${primaryColor}15`
+                                                    ? `${primaryColor}33`
                                                     : 'transparent',
-                                                border: '1px solid #f8f8f8',
+                                                border: '1px solid rgba(255,255,255,0.03)',
                                                 color: isConnected
                                                     ? primaryColor
-                                                    : '#ddd',
+                                                    : '#444',
                                                 fontSize: '1.1rem',
+                                                transition: 'all 0.1s',
                                             }}
                                         >
                                             {isConnected ? '●' : '○'}

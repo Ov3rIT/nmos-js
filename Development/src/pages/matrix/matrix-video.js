@@ -13,7 +13,8 @@ const MatrixVideo = ({ data }) => {
     const [connections, setConnections] = useState({});
 
     const primaryColor = 'rgb(2, 112, 101)';
-    const lightBg = 'rgb(245, 252, 251)';
+    const darkBg = '#1e1e1e'; // Grigio molto scuro per le righe
+    const nodeBg = '#2d2d2d'; // Grigio leggermente più chiaro per i nodi (se necessario)
 
     const processed = useMemo(() => {
         const normalize = items =>
@@ -98,8 +99,8 @@ const MatrixVideo = ({ data }) => {
     return (
         <Box
             style={{
-                backgroundColor: lightBg,
-                color: '#333',
+                backgroundColor: '#121212',
+                color: '#fff',
                 padding: '20px',
                 minHeight: '100vh',
             }}
@@ -109,7 +110,7 @@ const MatrixVideo = ({ data }) => {
                     variant="button"
                     style={{ color: primaryColor, fontWeight: 'bold' }}
                 >
-                    Livelli:
+                    Filtri:
                 </Typography>
                 {['Video', 'Audio', 'Anc'].map(cat => (
                     <Button
@@ -119,7 +120,7 @@ const MatrixVideo = ({ data }) => {
                             backgroundColor: activeFilters[cat]
                                 ? primaryColor
                                 : 'transparent',
-                            color: activeFilters[cat] ? '#fff' : primaryColor,
+                            color: '#fff',
                             borderColor: primaryColor,
                         }}
                         size="small"
@@ -137,10 +138,10 @@ const MatrixVideo = ({ data }) => {
 
             <Box
                 style={{
-                    border: `1px solid ${primaryColor}44`,
+                    border: `1px solid ${primaryColor}66`,
                     borderRadius: '4px',
                     overflow: 'hidden',
-                    backgroundColor: '#fff',
+                    backgroundColor: darkBg,
                 }}
             >
                 <MatrixBase
@@ -149,7 +150,8 @@ const MatrixVideo = ({ data }) => {
                     devices={processed.devices}
                     connections={connections}
                     primaryColor={primaryColor}
-                    lightBg={lightBg}
+                    darkBg={darkBg}
+                    nodeBg={nodeBg}
                     onConnect={() => {}}
                 />
             </Box>
