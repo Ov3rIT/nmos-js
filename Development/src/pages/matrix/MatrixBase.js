@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table } from 'semantic-ui-react'; // Assumendo l'uso di semantic-ui come nel repo originale
+import { Table } from '@material-ui/core'; // Assumendo l'uso di semantic-ui come nel repo originale
 
 const MatrixBase = ({
     senders,
