@@ -12,9 +12,7 @@ const MatrixVideo = ({ data }) => {
     });
     const [connections, setConnections] = useState({});
 
-    // Colore primario dell'utente
     const primaryColor = 'rgb(2, 112, 101)';
-    // Una versione chiarissima del primario per lo sfondo (95% bianco)
     const lightBg = 'rgb(245, 252, 251)';
 
     const processed = useMemo(() => {
@@ -111,7 +109,7 @@ const MatrixVideo = ({ data }) => {
                     variant="button"
                     style={{ color: primaryColor, fontWeight: 'bold' }}
                 >
-                    Filtri:
+                    Livelli:
                 </Typography>
                 {['Video', 'Audio', 'Anc'].map(cat => (
                     <Button
