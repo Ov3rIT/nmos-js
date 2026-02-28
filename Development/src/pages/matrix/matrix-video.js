@@ -13,8 +13,7 @@ const MatrixVideo = ({ data }) => {
     const [connections, setConnections] = useState({});
 
     const primaryColor = 'rgb(2, 112, 101)';
-    const darkBg = '#1e1e1e'; // Grigio molto scuro per le righe
-    const nodeBg = '#2d2d2d'; // Grigio leggermente più chiaro per i nodi (se necessario)
+    const lightBg = 'rgb(245, 252, 251)'; // Sfondo generale chiaro
 
     const processed = useMemo(() => {
         const normalize = items =>
@@ -99,8 +98,8 @@ const MatrixVideo = ({ data }) => {
     return (
         <Box
             style={{
-                backgroundColor: '#121212',
-                color: '#fff',
+                backgroundColor: lightBg,
+                color: '#333',
                 padding: '20px',
                 minHeight: '100vh',
             }}
@@ -120,7 +119,7 @@ const MatrixVideo = ({ data }) => {
                             backgroundColor: activeFilters[cat]
                                 ? primaryColor
                                 : 'transparent',
-                            color: '#fff',
+                            color: activeFilters[cat] ? '#fff' : primaryColor,
                             borderColor: primaryColor,
                         }}
                         size="small"
@@ -138,10 +137,10 @@ const MatrixVideo = ({ data }) => {
 
             <Box
                 style={{
-                    border: `1px solid ${primaryColor}66`,
+                    border: `1px solid ${primaryColor}22`,
                     borderRadius: '4px',
                     overflow: 'hidden',
-                    backgroundColor: darkBg,
+                    backgroundColor: '#fff',
                 }}
             >
                 <MatrixBase
@@ -150,8 +149,7 @@ const MatrixVideo = ({ data }) => {
                     devices={processed.devices}
                     connections={connections}
                     primaryColor={primaryColor}
-                    darkBg={darkBg}
-                    nodeBg={nodeBg}
+                    lightBg={lightBg}
                     onConnect={() => {}}
                 />
             </Box>
