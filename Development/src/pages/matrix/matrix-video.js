@@ -1,31 +1,68 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import MatrixBase from './MatrixBase';
 
 const MatrixVideo = ({ data }) => {
-    const normalize = items =>
-        Array.isArray(items) ? items : Object.values(items || {});
-
-    // Stato per le connessioni attive { [receiverId]: senderId }
+    // Stato per gestire quale "livello" NMOS visualizzare
+    const [activeTab, setActiveTab] = useState('Video');
+    // Stato per i cross-point in tempo reale (da WebSocket)
     const [connections, setConnections] = useState({});
 
-    const allSenders = normalize(data?.senders);
-    const allReceivers = normalize(data?.receivers);
-    const allNodes = normalize(data?.nodes);
-    const allDevices = normalize(data?.devices);
+    // --- 1. LOGICA DI ELABORAZIONE DATI ---
+    const processed = useMemo(() => {
+        const normalize = items =>
+            Array.isArray(items) ? items : Object.values(items || {});
 
-    // 1. Sincronizzazione iniziale con i dati del Registry (HTTP)
-    useEffect(() => {
-        const initialMap = {};
-        allReceivers.forEach(recv => {
-            if (recv.subscription?.sender_id) {
-                initialMap[recv.id] = recv.subscription.sender_id;
+        // Funzione di ordinamento alfabetico per label
+        const sortAlpha = (a, b) =>
+            (a.label || '').localeCompare(b.label || '');
+
+        // Mapping basato sul campo "format" dell'oggetto NMOS
+        const getCategory = item => {
+            switch (item.format) {
+                case 'urn:x-nmos:format:video':
+                    return 'Video';
+                case 'urn:x-nmos:format:audio':
+                    return 'Audio';
+                case 'urn:x-nmos:format:data':
+                    return 'Anc';
+                default:
+                    return 'Altro';
             }
-        });
-        setConnections(initialMap);
-    }, [data.receivers]);
+        };
 
-    // 2. Gestione WebSocket Real-Time
+        // Prepariamo tutti i nodi con la loro categoria
+        const allSenders = normalize(data?.senders)
+            .map(s => ({ ...s, cat: getCategory(s) }))
+            .sort(sortAlpha);
+
+        const allReceivers = normalize(data?.receivers)
+            .map(r => ({ ...r, cat: getCategory(r) }))
+            .sort(sortAlpha);
+
+        // Filtriamo solo quelli corrispondenti al Tab selezionato
+        return {
+            filteredSenders: allSenders.filter(s => s.cat === activeTab),
+            filteredReceivers: allReceivers.filter(r => r.cat === activeTab),
+            allReceivers, // ci serve per l'inizializzazione dello stato
+        };
+    }, [data, activeTab]);
+
+    // --- 2. SINCRONIZZAZIONE STATO INIZIALE ---
     useEffect(() => {
+        if (processed.allReceivers.length > 0) {
+            const initialMap = {};
+            processed.allReceivers.forEach(recv => {
+                if (recv.subscription?.sender_id) {
+                    initialMap[recv.id] = recv.subscription.sender_id;
+                }
+            });
+            setConnections(initialMap);
+        }
+    }, [processed.allReceivers]);
+
+    // --- 3. GESTIONE WEBSOCKET (REAL-TIME) ---
+    useEffect(() => {
+        // Sostituisci con il tuo ID sottoscrizione reale
         const wsUrl =
             'ws://172.16.1.110:8011/x-nmos/query/v1.3/subscriptions/131230a2-c19d-47b3-98ae-e0a59013ea02';
         const ws = new WebSocket(wsUrl);
@@ -33,81 +70,116 @@ const MatrixVideo = ({ data }) => {
         ws.onmessage = event => {
             try {
                 const grains = JSON.parse(event.data);
-                // Il tuo WS ritorna un array di oggetti con 'pre' e 'post'
                 if (Array.isArray(grains)) {
                     const updates = {};
                     grains.forEach(grain => {
-                        if (grain.post && grain.post.id) {
-                            // Prendiamo il sender_id aggiornato dal 'post'
+                        // Se c'è una modifica (post), aggiorniamo il sender_id del receiver
+                        if (grain.post) {
                             updates[grain.post.id] =
                                 grain.post.subscription?.sender_id || null;
                         }
                     });
-
-                    if (Object.keys(updates).length > 0) {
-                        setConnections(prev => ({ ...prev, ...updates }));
-                    }
+                    setConnections(prev => ({ ...prev, ...updates }));
                 }
             } catch (err) {
-                console.error('Errore parsing WS:', err);
+                console.error('Errore parse WS:', err);
             }
         };
-
-        ws.onopen = () => console.log('NMOS Live Sync: Connected');
-        ws.onerror = e => console.error('NMOS Live Sync: Error', e);
 
         return () => ws.close();
     }, []);
 
-    // 3. Azione di Commutazione (PATCH)
-    const handleToggleConnection = async (receiver, sender, isConnected) => {
-        // Troviamo il nodo per capire l'endpoint IS-05
-        const fullReceiver = allReceivers.find(
-            r => r.id === (receiver.id || receiver)
+    // Placeholder per l'azione di click (patch momentaneamente disabilitato)
+    const handleToggleConnection = (receiver, sender, isConnected) => {
+        console.log(
+            `Richiesta PATCH: Receiver ${receiver.label} -> Sender ${sender.label} (${isConnected ? 'Connect' : 'Disconnect'})`
         );
-        const node = allNodes.find(n => n.id === fullReceiver?.node_id);
-
-        if (!node || !node.api?.endpoints) {
-            console.error('Endpoint IS-05 non trovato per questo ricevitore');
-            return;
-        }
-
-        const ep = node.api.endpoints[0];
-        // Costruzione URL IS-05 Connection Management
-        const url = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/v1.0/single/receivers/${fullReceiver.id}/staged`;
-
-        const body = {
-            sender_id: isConnected ? null : sender.id || sender,
-            master_enable: true,
-            activation: { mode: 'activate_immediate' },
-        };
-
-        try {
-            console.log(
-                `Invio comando: ${isConnected ? 'Disconnetti' : 'Connetti'}`
-            );
-            await fetch(url, {
-                method: 'PATCH',
-                // Usiamo text/plain per evitare preflight CORS se necessario
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify(body),
-            });
-            // Nota: Non aggiorniamo lo stato qui. Aspettiamo il WebSocket per la conferma "vera".
-        } catch (err) {
-            alert('Errore durante la commutazione. Controlla la console.');
-            console.error(err);
-        }
     };
 
     return (
-        <MatrixBase
-            devices={allDevices}
-            senders={allSenders}
-            receivers={allReceivers}
-            connections={connections}
-            onConnect={handleToggleConnection}
-        />
+        <div style={styles.container}>
+            <header style={styles.header}>
+                <h2 style={styles.title}>NMOS Matrix Control</h2>
+
+                {/* NAVIGAZIONE FILTRI */}
+                <div style={styles.tabBar}>
+                    {['Video', 'Audio', 'Anc'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            style={{
+                                ...styles.tabButton,
+                                ...(activeTab === tab ? styles.tabActive : {}),
+                            }}
+                        >
+                            {tab.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
+            </header>
+
+            <div style={styles.matrixArea}>
+                {processed.filteredReceivers.length > 0 ? (
+                    <MatrixBase
+                        senders={processed.filteredSenders}
+                        receivers={processed.filteredReceivers}
+                        connections={connections}
+                        onConnect={handleToggleConnection}
+                    />
+                ) : (
+                    <div style={styles.noData}>
+                        Nessun nodo trovato per la categoria {activeTab}
+                    </div>
+                )}
+            </div>
+        </div>
     );
+};
+
+// --- STILI INLINE (per semplicità, puoi spostarli in CSS) ---
+const styles = {
+    container: {
+        backgroundColor: '#121212',
+        color: '#ffffff',
+        minHeight: '100vh',
+        padding: '20px',
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+        borderBottom: '1px solid #333',
+        paddingBottom: '10px',
+    },
+    title: { margin: 0, fontSize: '1.5rem', color: '#00d1b2' },
+    tabBar: { display: 'flex', gap: '5px' },
+    tabButton: {
+        padding: '8px 16px',
+        border: 'none',
+        backgroundColor: '#2a2a2a',
+        color: '#aaa',
+        cursor: 'pointer',
+        borderRadius: '4px',
+        fontWeight: '600',
+        transition: 'all 0.2s',
+    },
+    tabActive: {
+        backgroundColor: '#00d1b2',
+        color: '#000',
+    },
+    matrixArea: {
+        backgroundColor: '#1a1a1a',
+        borderRadius: '8px',
+        padding: '10px',
+        overflow: 'auto',
+    },
+    noData: {
+        padding: '40px',
+        textAlign: 'center',
+        color: '#666',
+    },
 };
 
 export default MatrixVideo;
