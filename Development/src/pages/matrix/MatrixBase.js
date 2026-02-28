@@ -51,8 +51,8 @@ const MatrixBase = ({
                                 }
                                 style={{
                                     cursor: 'pointer',
-                                    backgroundColor: '#1a1a1a',
-                                    color: '#fff',
+                                    backgroundColor: '#fff',
+                                    color: '#1a1a1a',
                                     padding: '10px 5px',
                                 }}
                             >
