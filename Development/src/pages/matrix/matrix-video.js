@@ -1,17 +1,15 @@
 import React from 'react';
 import MatrixBase from './MatrixBase';
-import makeConnection from '../../components/makeConnection';
 
 const MatrixVideo = ({ data }) => {
     const normalize = items =>
         Array.isArray(items) ? items : Object.values(items || {});
-
     const allSenders = normalize(data?.senders);
     const allReceivers = normalize(data?.receivers);
     const allNodes = normalize(data?.nodes);
     const allDevices = normalize(data?.devices);
 
-    // 1. Mappa delle connessioni attive (Verde)
+    // 1. Illuminazione Verde (Basata su IS-04 subscription)
     const currentConnections = {};
     allReceivers.forEach(receiver => {
         if (receiver.subscription?.sender_id) {
@@ -19,22 +17,12 @@ const MatrixVideo = ({ data }) => {
         }
     });
 
-    const handleToggleConnection = (receiver, sender, isConnected) => {
-        // Recuperiamo gli oggetti completi
-        // Usiamo .id per essere sicuri di non passare l'intero oggetto dove non serve
+    const handleToggleConnection = async (receiver, sender, isConnected) => {
         const fullReceiver = allReceivers.find(
             r => r.id === (receiver.id || receiver)
         );
-        const fullSender = isConnected
-            ? null
-            : allSenders.find(s => s.id === (sender.id || sender));
 
-        if (!fullReceiver) {
-            console.error('Receiver non trovato');
-            return;
-        }
-
-        // 2. Ricostruzione dell'endpoint di controllo (IS-05)
+        // TROVA IL NODO PER L'IP DI CONTROLLO
         let nodeId = fullReceiver.node_id;
         if (!nodeId && fullReceiver.device_id) {
             const dev = allDevices.find(d => d.id === fullReceiver.device_id);
@@ -43,40 +31,49 @@ const MatrixVideo = ({ data }) => {
         const node = allNodes.find(n => n.id === nodeId);
 
         if (!node || !node.api?.endpoints) {
-            console.error('Nodo o Endpoint non trovato');
+            alert("Errore: Impossibile trovare l'endpoint del dispositivo.");
             return;
         }
 
+        // Costruiamo l'URL IS-05 standard (Porta e Host dal Node)
         const ep = node.api.endpoints[0];
         const version =
             node.api.versions && node.api.versions.includes('v1.1')
                 ? 'v1.1'
                 : 'v1.0';
-        const transport = fullReceiver.transport || 'urn:x-nmos:transport:rtp';
+        const url = `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/single/receivers/${fullReceiver.id}/staged`;
 
-        // Prepariamo l'oggetto esattamente come lo vuole makeConnection
-        const receiverToConnect = {
-            ...fullReceiver,
-            transport: transport,
-            control_endpoints: [
-                {
-                    href: `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/`,
-                    type: transport,
-                },
-            ],
+        // Payload NMOS IS-05
+        const body = {
+            sender_id: isConnected ? null : sender.id || sender,
+            master_enable: true,
+            activation: { mode: 'activate_immediate' },
         };
 
-        console.log(`Esecuzione IS-05 per: ${receiverToConnect.label}`);
+        console.log('>>> INVIO COMANDO IS-05 DIRETTO:', url, body);
 
-        // 3. Chiamata alla libreria
-        // Passiamo gli oggetti filtrati per evitare il bug [object Object] nell'URL
-        makeConnection(receiverToConnect, fullSender)
-            .then(() => {
-                console.log('>>> SUCCESS: Patch inviato');
-            })
-            .catch(err => {
-                console.error('Errore makeConnection:', err);
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
             });
+
+            if (response.ok || response.status === 202) {
+                console.log('>>> PATCH OK: Il video dovrebbe aver commutato.');
+                // ALERT DI CORTESIA (Opzionale)
+                // alert(`Switch eseguito su ${fullReceiver.label}`);
+            } else {
+                const errTxt = await response.text();
+                console.error('Errore Hardware:', errTxt);
+                alert(`Errore dal decoder: ${response.status}`);
+            }
+        } catch (err) {
+            console.error('Errore Network/CORS:', err);
+            alert(
+                "Errore di rete. Verifica che l'estensione 'Allow CORS' sia attiva."
+            );
+        }
     };
 
     return (
