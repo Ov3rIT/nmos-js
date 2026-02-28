@@ -11,7 +11,7 @@ const MatrixVideo = ({ data }) => {
     const allNodes = normalize(data?.nodes);
     const allDevices = normalize(data?.devices);
 
-    // Identificazione connessioni per il verde (IS-04 subscription)
+    // 1. Mappa delle connessioni attive (Verde)
     const currentConnections = {};
     allReceivers.forEach(receiver => {
         if (receiver.subscription?.sender_id) {
@@ -20,14 +20,21 @@ const MatrixVideo = ({ data }) => {
     });
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
-        // 1. Recuperiamo i dati completi
-        const fullReceiver =
-            allReceivers.find(r => r.id === receiver.id) || receiver;
+        // Recuperiamo gli oggetti completi
+        // Usiamo .id per essere sicuri di non passare l'intero oggetto dove non serve
+        const fullReceiver = allReceivers.find(
+            r => r.id === (receiver.id || receiver)
+        );
         const fullSender = isConnected
             ? null
-            : allSenders.find(s => s.id === sender.id);
+            : allSenders.find(s => s.id === (sender.id || sender));
 
-        // 2. Costruzione dell'endpoint di controllo (fondamentale per makeConnection)
+        if (!fullReceiver) {
+            console.error('Receiver non trovato');
+            return;
+        }
+
+        // 2. Ricostruzione dell'endpoint di controllo (IS-05)
         let nodeId = fullReceiver.node_id;
         if (!nodeId && fullReceiver.device_id) {
             const dev = allDevices.find(d => d.id === fullReceiver.device_id);
@@ -35,39 +42,37 @@ const MatrixVideo = ({ data }) => {
         }
         const node = allNodes.find(n => n.id === nodeId);
 
-        if (!node) return;
+        if (!node || !node.api?.endpoints) {
+            console.error('Nodo o Endpoint non trovato');
+            return;
+        }
+
         const ep = node.api.endpoints[0];
         const version =
             node.api.versions && node.api.versions.includes('v1.1')
                 ? 'v1.1'
                 : 'v1.0';
+        const transport = fullReceiver.transport || 'urn:x-nmos:transport:rtp';
 
-        // 3. Arricchimento oggetto per emulare ConnectButtons.js
-        // Aggiungiamo i campi che la libreria si aspetta di trovare
-        const enrichedReceiver = {
+        // Prepariamo l'oggetto esattamente come lo vuole makeConnection
+        const receiverToConnect = {
             ...fullReceiver,
-            transport: fullReceiver.transport || 'urn:x-nmos:transport:rtp',
+            transport: transport,
             control_endpoints: [
                 {
                     href: `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/`,
-                    type: fullReceiver.transport || 'urn:x-nmos:transport:rtp',
+                    type: transport,
                 },
             ],
         };
 
-        console.log(
-            `Esecuzione Connect (tipo: active) per ${enrichedReceiver.label}`
-        );
+        console.log(`Esecuzione IS-05 per: ${receiverToConnect.label}`);
 
-        /**
-         * Chiamata a makeConnection.
-         * Nel file ConnectButtons.js, la funzione connect() chiama makeConnection.
-         * Il secondo parametro è il sender, il terzo (opzionale in alcune versioni)
-         * è il tipo di endpoint ('active' o 'staged').
-         */
-        makeConnection(enrichedReceiver, fullSender, 'active')
+        // 3. Chiamata alla libreria
+        // Passiamo gli oggetti filtrati per evitare il bug [object Object] nell'URL
+        makeConnection(receiverToConnect, fullSender)
             .then(() => {
-                console.log(">>> SUCCESS: Commutazione 'active' completata.");
+                console.log('>>> SUCCESS: Patch inviato');
             })
             .catch(err => {
                 console.error('Errore makeConnection:', err);
