@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MatrixBase from './MatrixBase';
 
 const MatrixVideo = ({ data }) => {
