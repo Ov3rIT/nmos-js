@@ -1,33 +1,21 @@
+import { Box, Button, Typography } from '@material-ui/core';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import MatrixBase from './MatrixBase';
 import { ThemeContext } from '../../theme/ThemeContext';
+import MatrixBase from './MatrixBase';
 
 const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext);
-
-    // Stato per i filtri di categoria
     const [activeFilters, setActiveFilters] = useState({
         Video: true,
         Audio: true,
         Anc: true,
     });
-
-    // Stato per i dispositivi collassati (nascosti)
-    const [collapsedDevices, setCollapsedDevices] = useState([]);
     const [connections, setConnections] = useState({});
 
-    // Funzione per nascondere/mostrare un dispositivo cliccato
-    const handleNodeToggle = deviceId => {
-        setCollapsedDevices(prev =>
-            prev.includes(deviceId)
-                ? prev.filter(id => id !== deviceId)
-                : [...prev, deviceId]
-        );
-    };
-
-    const toggleFilter = label => {
-        setActiveFilters(prev => ({ ...prev, [label]: !prev[label] }));
-    };
+    // Colore primario dell'utente
+    const primaryColor = 'rgb(2, 112, 101)';
+    // Una versione chiarissima del primario per lo sfondo (95% bianco)
+    const lightBg = 'rgb(245, 252, 251)';
 
     const processed = useMemo(() => {
         const normalize = items =>
@@ -59,48 +47,39 @@ const MatrixVideo = ({ data }) => {
             return 'Video';
         };
 
-        // Filtriamo i nodi in base ai filtri categoria e ai nodi "collassati"
-        const allSenders = normalize(data?.senders)
+        const snds = normalize(data?.senders)
             .map(s => ({ ...s, cat: getCategory(s) }))
-            .filter(
-                s =>
-                    activeFilters[s.cat] &&
-                    !collapsedDevices.includes(s.device_id)
-            )
+            .filter(s => activeFilters[s.cat])
             .sort(sortAlpha);
 
-        const allReceivers = normalize(data?.receivers)
+        const rcvs = normalize(data?.receivers)
             .map(r => ({ ...r, cat: getCategory(r) }))
-            .filter(
-                r =>
-                    activeFilters[r.cat] &&
-                    !collapsedDevices.includes(r.device_id)
-            )
+            .filter(r => activeFilters[r.cat])
             .sort(sortAlpha);
 
         return {
-            senders: allSenders,
-            receivers: allReceivers,
+            senders: snds,
+            receivers: rcvs,
             devices: normalize(data?.devices),
-            nodes: normalize(data?.nodes),
-            allReceivers: normalize(data?.receivers),
         };
-    }, [data, activeFilters, collapsedDevices]);
+    }, [data, activeFilters]);
 
-    // Sync iniziale e WebSocket
     useEffect(() => {
+        const rcvs = Array.isArray(data?.receivers)
+            ? data.receivers
+            : Object.values(data?.receivers || {});
         const initialMap = {};
-        processed.allReceivers.forEach(recv => {
+        rcvs.forEach(recv => {
             if (recv.subscription?.sender_id)
                 initialMap[recv.id] = recv.subscription.sender_id;
         });
         setConnections(initialMap);
-    }, [processed.allReceivers]);
+    }, [data]);
 
     useEffect(() => {
-        const wsUrl =
-            'ws://172.16.1.110:8011/x-nmos/query/v1.3/subscriptions/131230a2-c19d-47b3-98ae-e0a59013ea02';
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(
+            'ws://172.16.1.110:8011/x-nmos/query/v1.3/subscriptions/131230a2-c19d-47b3-98ae-e0a59013ea02'
+        );
         ws.onmessage = event => {
             try {
                 const grains = JSON.parse(event.data);
@@ -119,85 +98,64 @@ const MatrixVideo = ({ data }) => {
     }, []);
 
     return (
-        <div
+        <Box
             style={{
-                backgroundColor: theme.background,
-                color: theme.text,
+                backgroundColor: lightBg,
+                color: '#333',
                 padding: '20px',
                 minHeight: '100vh',
             }}
         >
-            <div
-                style={{
-                    marginBottom: '20px',
-                    display: 'flex',
-                    gap: '10px',
-                    alignItems: 'center',
-                }}
-            >
-                <span
-                    style={{
-                        fontSize: '12px',
-                        color: theme.primary,
-                        fontWeight: 'bold',
-                    }}
+            <Box display="flex" alignItems="center" mb={2} gridGap={10}>
+                <Typography
+                    variant="button"
+                    style={{ color: primaryColor, fontWeight: 'bold' }}
                 >
-                    FILTRI:
-                </span>
+                    Filtri:
+                </Typography>
                 {['Video', 'Audio', 'Anc'].map(cat => (
-                    <button
+                    <Button
                         key={cat}
-                        onClick={() => toggleFilter(cat)}
+                        variant={activeFilters[cat] ? 'contained' : 'outlined'}
                         style={{
-                            padding: '6px 12px',
-                            cursor: 'pointer',
-                            borderRadius: '4px',
-                            border: `1px solid ${theme.primary}`,
                             backgroundColor: activeFilters[cat]
-                                ? theme.primary
+                                ? primaryColor
                                 : 'transparent',
-                            color: activeFilters[cat] ? '#000' : theme.text,
-                            fontWeight: 'bold',
+                            color: activeFilters[cat] ? '#fff' : primaryColor,
+                            borderColor: primaryColor,
                         }}
+                        size="small"
+                        onClick={() =>
+                            setActiveFilters(prev => ({
+                                ...prev,
+                                [cat]: !prev[cat],
+                            }))
+                        }
                     >
                         {cat}
-                    </button>
+                    </Button>
                 ))}
-                {collapsedDevices.length > 0 && (
-                    <button
-                        onClick={() => setCollapsedDevices([])}
-                        style={{
-                            marginLeft: 'auto',
-                            backgroundColor: '#e74c3c',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        MOSTRA TUTTI ({collapsedDevices.length})
-                    </button>
-                )}
-            </div>
+            </Box>
 
-            <div
+            <Box
                 style={{
-                    overflow: 'auto',
-                    border: `1px solid ${theme.border}`,
+                    border: `1px solid ${primaryColor}44`,
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    backgroundColor: '#fff',
                 }}
             >
                 <MatrixBase
                     senders={processed.senders}
                     receivers={processed.receivers}
                     devices={processed.devices}
-                    nodes={processed.nodes}
                     connections={connections}
+                    primaryColor={primaryColor}
+                    lightBg={lightBg}
                     onConnect={() => {}}
-                    onNodeClick={handleNodeToggle} // Passiamo la funzione di toggle
                 />
-            </div>
-        </div>
+            </Box>
+        </Box>
     );
 };
 
