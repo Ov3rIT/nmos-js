@@ -11,7 +11,7 @@ const MatrixVideo = ({ data }) => {
     const allNodes = normalize(data?.nodes);
     const allDevices = normalize(data?.devices);
 
-    // 1. Identificazione connessioni attive per il colore VERDE
+    // Identificazione connessioni per il verde (IS-04 subscription)
     const currentConnections = {};
     allReceivers.forEach(receiver => {
         if (receiver.subscription?.sender_id) {
@@ -20,65 +20,57 @@ const MatrixVideo = ({ data }) => {
     });
 
     const handleToggleConnection = (receiver, sender, isConnected) => {
-        // Recuperiamo l'oggetto originale
-        const rawReceiver =
+        // 1. Recuperiamo i dati completi
+        const fullReceiver =
             allReceivers.find(r => r.id === receiver.id) || receiver;
         const fullSender = isConnected
             ? null
             : allSenders.find(s => s.id === sender.id);
 
-        // --- IL FIX PER "INVALID ENDPOINT" ---
-        // Se il Registry non ci dà i control_endpoints, dobbiamo ricostruirli
-        // andando a pescare l'IP dal Nodo corrispondente.
-
-        let nodeId = rawReceiver.node_id;
-        if (!nodeId && rawReceiver.device_id) {
-            const dev = allDevices.find(d => d.id === rawReceiver.device_id);
+        // 2. Costruzione dell'endpoint di controllo (fondamentale per makeConnection)
+        let nodeId = fullReceiver.node_id;
+        if (!nodeId && fullReceiver.device_id) {
+            const dev = allDevices.find(d => d.id === fullReceiver.device_id);
             nodeId = dev?.node_id;
         }
-
         const node = allNodes.find(n => n.id === nodeId);
 
-        if (!node || !node.api?.endpoints) {
-            console.error(
-                "Impossibile trovare il Nodo per ricavare l'endpoint di controllo."
-            );
-            return;
-        }
-
-        // Prendiamo l'endpoint di Connection Management (IS-05) dal Nodo
+        if (!node) return;
         const ep = node.api.endpoints[0];
         const version =
             node.api.versions && node.api.versions.includes('v1.1')
                 ? 'v1.1'
                 : 'v1.0';
-        const transport = rawReceiver.transport || 'urn:x-nmos:transport:rtp';
 
-        // Costruiamo l'oggetto "Enriched" che emula perfettamente il comportamento NMOS
-        const fullReceiver = {
-            ...rawReceiver,
-            transport: transport,
+        // 3. Arricchimento oggetto per emulare ConnectButtons.js
+        // Aggiungiamo i campi che la libreria si aspetta di trovare
+        const enrichedReceiver = {
+            ...fullReceiver,
+            transport: fullReceiver.transport || 'urn:x-nmos:transport:rtp',
             control_endpoints: [
                 {
-                    // Questo è il formato esatto che la libreria cerca internamente
                     href: `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/`,
-                    type: transport,
+                    type: fullReceiver.transport || 'urn:x-nmos:transport:rtp',
                 },
             ],
         };
 
         console.log(
-            `Tentativo IS-05 per ${fullReceiver.label} tramite ${fullReceiver.control_endpoints[0].href}`
+            `Esecuzione Connect (tipo: active) per ${enrichedReceiver.label}`
         );
 
-        // Ora chiamiamo makeConnection come fa ConnectButtons.js alla riga 21
-        makeConnection(fullReceiver, fullSender)
+        /**
+         * Chiamata a makeConnection.
+         * Nel file ConnectButtons.js, la funzione connect() chiama makeConnection.
+         * Il secondo parametro è il sender, il terzo (opzionale in alcune versioni)
+         * è il tipo di endpoint ('active' o 'staged').
+         */
+        makeConnection(enrichedReceiver, fullSender, 'active')
             .then(() => {
-                console.log('>>> SUCCESS: Commutazione inviata!');
+                console.log(">>> SUCCESS: Commutazione 'active' completata.");
             })
             .catch(err => {
-                console.error('Errore libreria makeConnection:', err);
-                // Se arriviamo qui, il problema potrebbe essere il CORS o la rete
+                console.error('Errore makeConnection:', err);
             });
     };
 
