@@ -64,48 +64,73 @@ const MatrixVideo = ({ data }) => {
 
     // LOGICA DI PATCHING DINAMICA
     const handleConnect = async (receiver, sender, shouldConnect) => {
-        // 1. Cerchiamo l'URL Connection Management (IS-05) nei controlli del receiver
-        const is05Control = receiver.controls?.find(c =>
-            c.type.includes('sr-ctrl')
-        );
-
-        let endpoint = '';
-
-        if (is05Control) {
-            // Se il device espone l'URL completo (es: http://192.168.1.50:8010/x-nmos/connection/v1.1)
-            endpoint = `${is05Control.href.replace(/\/$/, '')}/single/receivers/${receiver.id}/staged`;
-        } else {
-            // Fallback: se non c'è il controllo, proviamo l'IP del Registry (ma spesso fallisce con 404)
-            endpoint = `http://${window.location.hostname}:8010/x-nmos/connection/v1.1/single/receivers/${receiver.id}/staged`;
-        }
-
-        console.log(`📡 Sending PATCH to: ${endpoint}`);
-
-        const payload = {
-            sender_id: shouldConnect ? sender.id : null,
-            master_enable: true,
-            activation: { mode: 'activate_immediate' },
-        };
+        const registryIp = '172.16.1.110'; // IP del tuo Registry
+        const registryPort = '8010';
 
         try {
-            const response = await fetch(endpoint, {
+            // 1. Chiamata al Registry per ottenere i dettagli del DEVICE
+            console.log(
+                `🔍 Risoluzione device per receiver: ${receiver.label}...`
+            );
+            const deviceResponse = await fetch(
+                `http://${registryIp}:${registryPort}/x-nmos/query/v1.3/devices/${receiver.device_id}`
+            );
+
+            if (!deviceResponse.ok)
+                throw new Error('Device non trovato nel Registry');
+
+            const deviceData = await deviceResponse.json();
+
+            // 2. Estrazione dell'URL IS-05 dai controlli del Device
+            // Cerchiamo preferibilmente la v1.1, altrimenti la v1.0
+            const control =
+                deviceData.controls?.find(
+                    c => c.type === 'urn:x-nmos:control:sr-ctrl/v1.1'
+                ) ||
+                deviceData.controls?.find(
+                    c => c.type === 'urn:x-nmos:control:sr-ctrl/v1.0'
+                );
+
+            if (!control) {
+                console.error(
+                    '❌ Il device non espone controlli IS-05 (sr-ctrl)'
+                );
+                return;
+            }
+
+            // 3. Costruzione dell'URL finale verso il DEVICE reale
+            // Puliamo l'href da eventuali slash finali e aggiungiamo il percorso standard
+            const baseIs05 = control.href.replace(/\/$/, '');
+            const finalEndpoint = `${baseIs05}/single/receivers/${receiver.id}/staged`;
+
+            console.log(`📡 Puntando al Device Reale: ${finalEndpoint}`);
+
+            const payload = {
+                sender_id: shouldConnect ? sender.id : null,
+                master_enable: true,
+                activation: { mode: 'activate_immediate' },
+            };
+
+            // 4. Esecuzione della PATCH reale sul Device
+            const patchResponse = await fetch(finalEndpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
-            if (response.ok) {
+            if (patchResponse.ok) {
                 setConnections(prev => ({
                     ...prev,
                     [receiver.id]: shouldConnect ? sender.id : null,
                 }));
-                console.log('✅ Success!');
+                console.log('✅ Patch eseguita con successo sul device!');
             } else {
-                const errText = await response.text();
-                console.error(`❌ Server Error (${response.status}):`, errText);
+                console.error(
+                    `❌ Errore Patch Device (${patchResponse.status})`
+                );
             }
         } catch (error) {
-            console.error('❌ Network Error:', error);
+            console.error('❌ Errore nel processo di patching:', error.message);
         }
     };
 
