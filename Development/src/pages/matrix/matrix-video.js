@@ -5,11 +5,11 @@ import { ThemeContext } from '../../theme/ThemeContext'; // Importiamo il contes
 const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext);
 
-    // Stato filtri: Video attivo di default
+    // Partiamo con tutti i filtri attivi per vedere tutto
     const [activeFilters, setActiveFilters] = useState({
         Video: true,
-        Audio: false,
-        Anc: false,
+        Audio: true,
+        Anc: true,
     });
 
     const [connections, setConnections] = useState({});
@@ -19,7 +19,6 @@ const MatrixVideo = ({ data }) => {
     };
 
     const processed = useMemo(() => {
-        // Funzione helper per trasformare oggetti in array
         const normalize = items => {
             if (!items) return [];
             return Array.isArray(items) ? items : Object.values(items);
@@ -28,15 +27,19 @@ const MatrixVideo = ({ data }) => {
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
 
+        // LOGICA DI CATEGORIZZAZIONE POTENZIATA
         const getCategory = item => {
             const fmt = item.format || '';
-            if (fmt.includes(':video')) return 'Video';
-            if (fmt.includes(':audio')) return 'Audio';
-            if (fmt.includes(':data')) return 'Anc';
-            return 'Altro';
+            // Debug: se è un sender, vediamo cosa legge
+            if (fmt.includes('audio')) return 'Audio';
+            if (fmt.includes('video')) return 'Video';
+            if (fmt.includes('data') || fmt.includes('mux')) return 'Anc';
+
+            // FALLBACK: Se non capisce il formato, lo assegniamo a Video
+            // per evitare che il sender scompaia nel nulla
+            return 'Video';
         };
 
-        // Estraiamo e categorizziamo
         const allSenders = normalize(data?.senders)
             .map(s => ({ ...s, cat: getCategory(s) }))
             .sort(sortAlpha);
@@ -44,31 +47,14 @@ const MatrixVideo = ({ data }) => {
             .map(r => ({ ...r, cat: getCategory(r) }))
             .sort(sortAlpha);
 
-        // Filtriamo in base ai toggle
-        const filteredSenders = allSenders.filter(s => activeFilters[s.cat]);
-        const filteredReceivers = allReceivers.filter(
-            r => activeFilters[r.cat]
-        );
-
-        // DEBUG LOG: Controlla la console del browser per vedere questi numeri
-        console.log(`Filtri:`, activeFilters);
-        console.log(
-            `Sender trovati: ${filteredSenders.length}`,
-            filteredSenders
-        );
-        console.log(
-            `Receiver trovati: ${filteredReceivers.length}`,
-            filteredReceivers
-        );
-
         return {
-            filteredSenders,
-            filteredReceivers,
-            allReceivers: allReceivers,
+            filteredSenders: allSenders.filter(s => activeFilters[s.cat]),
+            filteredReceivers: allReceivers.filter(r => activeFilters[r.cat]),
+            allReceivers,
         };
     }, [data, activeFilters]);
 
-    // WebSocket e Sincronizzazione (Invariati)
+    // WebSocket e Sync Iniziale (Invariati)
     useEffect(() => {
         if (processed.allReceivers.length > 0) {
             const initialMap = {};
@@ -101,41 +87,52 @@ const MatrixVideo = ({ data }) => {
         return () => ws.close();
     }, []);
 
-    const dynamicStyles = {
+    const styles = {
         container: {
-            backgroundColor: theme.background || '#121212',
-            color: theme.text || '#ffffff',
+            backgroundColor: theme.background,
+            color: theme.text,
             padding: '20px',
             minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
         },
+        header: { marginBottom: '20px' },
         button: active => ({
-            padding: '8px 16px',
+            padding: '10px 20px',
             marginRight: '10px',
             cursor: 'pointer',
-            borderRadius: '4px',
-            border: `1px solid ${theme.primary}`,
+            border: `2px solid ${theme.primary}`,
             backgroundColor: active ? theme.primary : 'transparent',
-            color: active ? theme.buttonText || '#000' : theme.text || '#fff',
+            color: active ? '#ffffff' : theme.text,
+            borderRadius: '4px',
             fontWeight: 'bold',
         }),
+        matrixWrapper: {
+            flex: 1,
+            overflow: 'auto', // Fondamentale per vedere i Sender se sono molti
+            border: `1px solid ${theme.border || '#333'}`,
+            borderRadius: '8px',
+        },
     };
 
     return (
-        <div style={dynamicStyles.container}>
-            <div style={{ marginBottom: '20px' }}>
+        <div style={styles.container}>
+            <div style={styles.header}>
                 {['Video', 'Audio', 'Anc'].map(cat => (
                     <button
                         key={cat}
-                        style={dynamicStyles.button(activeFilters[cat])}
+                        style={styles.button(activeFilters[cat])}
                         onClick={() => toggleFilter(cat)}
                     >
-                        {cat}
+                        {cat} {activeFilters[cat] ? 'ON' : 'OFF'}
                     </button>
                 ))}
             </div>
 
-            {/* Assicurati che MatrixBase riceva entrambi gli array filtrati */}
-            <div style={{ overflowX: 'auto' }}>
+            <div style={styles.matrixWrapper}>
+                {/* IMPORTANTE: Se MatrixBase non riceve i sender, 
+                    potrebbe dipendere dal fatto che 'processed.filteredSenders' è 0.
+                */}
                 <MatrixBase
                     senders={processed.filteredSenders}
                     receivers={processed.filteredReceivers}
