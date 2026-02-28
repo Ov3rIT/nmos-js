@@ -1,136 +1,112 @@
 import React from 'react';
+import { Table } from 'semantic-ui-react'; // Assumendo l'uso di semantic-ui come nel repo originale
 
 const MatrixBase = ({
-    devices = [],
-    senders = [],
-    receivers = [],
-    connections = {},
+    senders,
+    receivers,
+    devices,
+    nodes,
+    connections,
     onConnect,
+    onNodeClick,
 }) => {
-    // Funzione interna per raggruppare i canali sotto il nome del dispositivo (Node/Device)
-    const getGrouped = items => {
-        const groups = {};
-        items.forEach(item => {
-            const dId = item.device_id;
-            const dev = devices.find(d => d.id === dId);
-            const groupKey = dId || 'unknown';
-
-            if (!groups[groupKey]) {
-                groups[groupKey] = {
-                    label: dev
-                        ? dev.label || dev.description
-                        : 'Altri Dispositivi',
-                    channels: [],
-                };
-            }
-            groups[groupKey].channels.push(item);
-        });
-        return Object.values(groups);
-    };
-
-    const groupedSenders = getGrouped(senders);
-    const groupedReceivers = getGrouped(receivers);
-
-    // Conta quanti sender ci sono in totale per impostare la larghezza delle righe header
-    const totalSenderCount = senders.length;
-
-    // Helper per determinare il tipo di flusso (per i colori dei quadratini)
-    const getFlowType = item => {
-        const format = (item?.format || '').toLowerCase();
-        if (format.includes('video')) return 'video';
-        if (format.includes('audio')) return 'audio';
-        return 'ancillary';
+    // Funzione helper per trovare il nome del Device partendo dal device_id
+    const getDeviceLabel = deviceId => {
+        const dev = devices.find(d => d.id === deviceId);
+        return dev ? dev.label : 'Unknown Device';
     };
 
     return (
-        <div className="dante-matrix-wrapper">
-            <table className="dante-table">
-                <thead>
-                    {/* RIGA 1: Nomi dei Dispositivi Sender (Colonne) */}
-                    <tr>
-                        <th className="corner-label" rowSpan="2">
-                            RECEIVERS \ SENDERS
-                        </th>
-                        {groupedSenders.map((g, i) => (
-                            <th
-                                key={i}
-                                colSpan={g.channels.length}
-                                className="device-header-v"
+        <div className="matrix-base" style={{ padding: '10px' }}>
+            <Table celled structured unstackable inverted size="small">
+                <Table.Header>
+                    <Table.Row>
+                        <Table.HeaderCell style={{ minWidth: '150px' }}>
+                            Receivers \ Senders
+                        </Table.HeaderCell>
+                        {senders.map(sender => (
+                            <Table.HeaderCell
+                                key={sender.id}
+                                className="rotate-text"
+                                onClick={() => onNodeClick(sender.device_id)} // CLICK SUL SENDER DEVICE
+                                style={{
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                }}
+                                title={`Dispositivo: ${getDeviceLabel(sender.device_id)}. Clicca per nascondere.`}
                             >
-                                {g.label}
-                            </th>
-                        ))}
-                    </tr>
-                    {/* RIGA 2: Nomi dei singoli flussi Sender (Verticali) */}
-                    <tr>
-                        {groupedSenders
-                            .flatMap(g => g.channels)
-                            .map(s => (
-                                <th
-                                    key={s.id}
-                                    className="v-header"
-                                    title={s.label}
+                                <div
+                                    style={{
+                                        writingMode: 'vertical-rl',
+                                        transform: 'rotate(180deg)',
+                                        padding: '5px',
+                                    }}
                                 >
-                                    <div className="v-text">
-                                        {s.label || s.id.slice(0, 8)}
-                                    </div>
-                                </th>
-                            ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {groupedReceivers.map((gr, i) => (
-                        <React.Fragment key={i}>
-                            {/* Header del Dispositivo Receiver (Riga orizzontale) */}
-                            <tr className="device-row-header">
-                                <td colSpan={totalSenderCount + 1}>
-                                    {gr.label}
-                                </td>
-                            </tr>
-                            {/* Righe dei flussi Receiver */}
-                            {gr.channels.map(r => (
-                                <tr key={r.id}>
-                                    <td
-                                        className="h-header-channel"
-                                        title={r.label}
-                                    >
-                                        {r.label || r.id.slice(0, 8)}
-                                    </td>
-                                    {/* Celle di incrocio per il Patch */}
-                                    {groupedSenders
-                                        .flatMap(g => g.channels)
-                                        .map(s => {
-                                            const isConnected =
-                                                connections[r.id] === s.id;
-                                            const flowType = getFlowType(s);
+                                    <strong>
+                                        {getDeviceLabel(sender.device_id)}
+                                    </strong>
+                                    <br />
+                                    <small>{sender.label}</small>
+                                </div>
+                            </Table.HeaderCell>
+                        ))}
+                    </Table.Row>
+                </Table.Header>
 
-                                            return (
-                                                <td
-                                                    key={`${r.id}-${s.id}`}
-                                                    className={`matrix-cell ${isConnected ? 'active' : ''}`}
-                                                    onClick={() =>
-                                                        onConnect(
-                                                            r,
-                                                            s,
-                                                            isConnected
-                                                        )
-                                                    }
-                                                    title={`${s.label} -> ${r.label}`}
-                                                >
-                                                    {isConnected && (
-                                                        <div
-                                                            className={`dante-check status-${flowType}`}
-                                                        />
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                </tr>
-                            ))}
-                        </React.Fragment>
+                <Table.Body>
+                    {receivers.map(receiver => (
+                        <Table.Row key={receiver.id}>
+                            <Table.Cell
+                                onClick={() => onNodeClick(receiver.device_id)} // CLICK SUL RECEIVER DEVICE
+                                style={{
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                }}
+                                title="Clicca per nascondere questo dispositivo"
+                            >
+                                <div>{getDeviceLabel(receiver.device_id)}</div>
+                                <div
+                                    style={{ fontSize: '0.85em', opacity: 0.7 }}
+                                >
+                                    {receiver.label}
+                                </div>
+                            </Table.Cell>
+
+                            {senders.map(sender => {
+                                const isConnected =
+                                    connections[receiver.id] === sender.id;
+                                return (
+                                    <Table.Cell
+                                        key={`${receiver.id}-${sender.id}`}
+                                        textAlign="center"
+                                        onClick={() =>
+                                            onConnect(
+                                                receiver,
+                                                sender,
+                                                !isConnected
+                                            )
+                                        }
+                                        style={{
+                                            cursor: 'pointer',
+                                            backgroundColor: isConnected
+                                                ? '#27ae60'
+                                                : 'transparent',
+                                            transition: 'background-color 0.2s',
+                                        }}
+                                    >
+                                        {isConnected ? '●' : '○'}
+                                    </Table.Cell>
+                                );
+                            })}
+                        </Table.Row>
                     ))}
-                </tbody>
-            </table>
+                </Table.Body>
+            </Table>
+
+            <style>{`
+                .rotate-text { height: 140px; white-space: nowrap; }
+                .matrix-base td:hover { background-color: rgba(255,255,255,0.1) !important; }
+            `}</style>
         </div>
     );
 };

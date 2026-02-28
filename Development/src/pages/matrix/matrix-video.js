@@ -5,20 +5,19 @@ import { ThemeContext } from '../../theme/ThemeContext';
 const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext);
 
-    // Stato per i filtri di categoria (Video, Audio, Anc)
+    // Stato per i filtri di categoria
     const [activeFilters, setActiveFilters] = useState({
         Video: true,
         Audio: true,
         Anc: true,
     });
 
-    // Stato per gestire quali Device sono "collassati" (nascosti)
+    // Stato per i dispositivi collassati (nascosti)
     const [collapsedDevices, setCollapsedDevices] = useState([]);
-
     const [connections, setConnections] = useState({});
 
-    // Funzione per mostrare/nascondere un dispositivo
-    const toggleDeviceCollapse = deviceId => {
+    // Funzione per nascondere/mostrare un dispositivo cliccato
+    const handleNodeToggle = deviceId => {
         setCollapsedDevices(prev =>
             prev.includes(deviceId)
                 ? prev.filter(id => id !== deviceId)
@@ -31,11 +30,8 @@ const MatrixVideo = ({ data }) => {
     };
 
     const processed = useMemo(() => {
-        const normalize = items => {
-            if (!items) return [];
-            return Array.isArray(items) ? items : Object.values(items);
-        };
-
+        const normalize = items =>
+            Array.isArray(items) ? items : Object.values(items || {});
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
 
@@ -63,43 +59,42 @@ const MatrixVideo = ({ data }) => {
             return 'Video';
         };
 
+        // Filtriamo i nodi in base ai filtri categoria e ai nodi "collassati"
         const allSenders = normalize(data?.senders)
             .map(s => ({ ...s, cat: getCategory(s) }))
+            .filter(
+                s =>
+                    activeFilters[s.cat] &&
+                    !collapsedDevices.includes(s.device_id)
+            )
             .sort(sortAlpha);
+
         const allReceivers = normalize(data?.receivers)
             .map(r => ({ ...r, cat: getCategory(r) }))
+            .filter(
+                r =>
+                    activeFilters[r.cat] &&
+                    !collapsedDevices.includes(r.device_id)
+            )
             .sort(sortAlpha);
-        const allDevices = normalize(data?.devices);
-        const allNodes = normalize(data?.nodes);
-
-        // FILTRAGGIO FINALE: Escludiamo i nodi il cui device_id è nella lista "collapsedDevices"
-        const filteredSenders = allSenders
-            .filter(s => activeFilters[s.cat])
-            .filter(s => !collapsedDevices.includes(s.device_id));
-
-        const filteredReceivers = allReceivers
-            .filter(r => activeFilters[r.cat])
-            .filter(r => !collapsedDevices.includes(r.device_id));
 
         return {
-            filteredSenders,
-            filteredReceivers,
-            devices: allDevices,
-            nodes: allNodes,
-            allReceivers,
+            senders: allSenders,
+            receivers: allReceivers,
+            devices: normalize(data?.devices),
+            nodes: normalize(data?.nodes),
+            allReceivers: normalize(data?.receivers),
         };
     }, [data, activeFilters, collapsedDevices]);
 
-    // --- Sincronizzazione WebSocket (Invariata) ---
+    // Sync iniziale e WebSocket
     useEffect(() => {
-        if (processed.allReceivers.length > 0) {
-            const initialMap = {};
-            processed.allReceivers.forEach(recv => {
-                if (recv.subscription?.sender_id)
-                    initialMap[recv.id] = recv.subscription.sender_id;
-            });
-            setConnections(initialMap);
-        }
+        const initialMap = {};
+        processed.allReceivers.forEach(recv => {
+            if (recv.subscription?.sender_id)
+                initialMap[recv.id] = recv.subscription.sender_id;
+        });
+        setConnections(initialMap);
     }, [processed.allReceivers]);
 
     useEffect(() => {
@@ -123,70 +118,65 @@ const MatrixVideo = ({ data }) => {
         return () => ws.close();
     }, []);
 
-    const styles = {
-        container: {
-            backgroundColor: theme.background,
-            color: theme.text,
-            padding: '20px',
-            minHeight: '100vh',
-        },
-        filterBar: {
-            marginBottom: '20px',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '10px',
-            alignItems: 'center',
-        },
-        button: active => ({
-            padding: '6px 14px',
-            cursor: 'pointer',
-            border: `1px solid ${theme.primary}`,
-            backgroundColor: active ? theme.primary : 'transparent',
-            color: active ? theme.buttonText || '#000' : theme.text,
-            borderRadius: '4px',
-            fontWeight: 'bold',
-            fontSize: '12px',
-        }),
-        resetBtn: {
-            marginLeft: 'auto',
-            padding: '6px 12px',
-            fontSize: '11px',
-            cursor: 'pointer',
-            backgroundColor: '#cc0000',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-        },
-    };
-
     return (
-        <div style={styles.container}>
-            <div style={styles.filterBar}>
+        <div
+            style={{
+                backgroundColor: theme.background,
+                color: theme.text,
+                padding: '20px',
+                minHeight: '100vh',
+            }}
+        >
+            <div
+                style={{
+                    marginBottom: '20px',
+                    display: 'flex',
+                    gap: '10px',
+                    alignItems: 'center',
+                }}
+            >
                 <span
                     style={{
-                        fontWeight: 'bold',
                         fontSize: '12px',
                         color: theme.primary,
+                        fontWeight: 'bold',
                     }}
                 >
-                    FILTRI CATEGORIA:
+                    FILTRI:
                 </span>
                 {['Video', 'Audio', 'Anc'].map(cat => (
                     <button
                         key={cat}
-                        style={styles.button(activeFilters[cat])}
                         onClick={() => toggleFilter(cat)}
+                        style={{
+                            padding: '6px 12px',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            border: `1px solid ${theme.primary}`,
+                            backgroundColor: activeFilters[cat]
+                                ? theme.primary
+                                : 'transparent',
+                            color: activeFilters[cat] ? '#000' : theme.text,
+                            fontWeight: 'bold',
+                        }}
                     >
                         {cat}
                     </button>
                 ))}
-
                 {collapsedDevices.length > 0 && (
                     <button
-                        style={styles.resetBtn}
                         onClick={() => setCollapsedDevices([])}
+                        style={{
+                            marginLeft: 'auto',
+                            backgroundColor: '#e74c3c',
+                            color: 'white',
+                            border: 'none',
+                            padding: '6px 12px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                        }}
                     >
-                        RIPRISTINA {collapsedDevices.length} NODI NASCOSTI
+                        MOSTRA TUTTI ({collapsedDevices.length})
                     </button>
                 )}
             </div>
@@ -197,24 +187,15 @@ const MatrixVideo = ({ data }) => {
                     border: `1px solid ${theme.border}`,
                 }}
             >
-                {/* Passiamo una funzione fittizia onDeviceClick se MatrixBase la supporta, 
-                   altrimenti il filtraggio avviene già a livello di array 'filteredSenders/Receivers'
-                */}
                 <MatrixBase
-                    senders={processed.filteredSenders}
-                    receivers={processed.filteredReceivers}
+                    senders={processed.senders}
+                    receivers={processed.receivers}
                     devices={processed.devices}
                     nodes={processed.nodes}
                     connections={connections}
                     onConnect={() => {}}
-                    // Se MatrixBase supporta il click sull'intestazione del nodo:
-                    onNodeClick={nodeId => toggleDeviceCollapse(nodeId)}
+                    onNodeClick={handleNodeToggle} // Passiamo la funzione di toggle
                 />
-            </div>
-
-            <div style={{ marginTop: '10px', fontSize: '11px', opacity: 0.6 }}>
-                Suggerimento: I nodi vengono filtrati dinamicamente. Se un
-                dispositivo non appare, controlla i filtri attivi.
             </div>
         </div>
     );
