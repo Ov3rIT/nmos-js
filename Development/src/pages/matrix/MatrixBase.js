@@ -20,7 +20,6 @@ const MatrixBase = ({
     primaryColor,
     lightBg,
 }) => {
-    // Dimensione fissa per rendere la griglia quadrata
     const cellSize = 45;
 
     const getDeviceLabel = deviceId => {
@@ -29,7 +28,7 @@ const MatrixBase = ({
     };
 
     const isLastInGroup = (currentIdx, array, key) => {
-        if (currentIdx === array.length - 1) return true;
+        if (currentIdx === array.length - 1) return true; // Forza il bordo spesso sull'ultima colonna/riga totale
         return array[currentIdx][key] !== array[currentIdx + 1][key];
     };
 
@@ -107,31 +106,37 @@ const MatrixBase = ({
                                 padding: 0,
                             }}
                         />
-                        {Object.values(senderGroups).map((group, idx) => (
-                            <TableCell
-                                key={idx}
-                                align="center"
-                                colSpan={group.count}
-                                style={{
-                                    backgroundColor: primaryColor,
-                                    color: '#fff',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.7rem',
-                                    borderLeft: `3px solid ${nodeLineColor}`,
-                                    borderBottom: `3px solid ${nodeLineColor}`,
-                                    boxSizing: 'border-box',
-                                    padding: '2px',
-                                }}
-                            >
-                                {group.label}
-                            </TableCell>
-                        ))}
+                        {Object.values(senderGroups).map((group, idx) => {
+                            const isLastGroup =
+                                idx === Object.keys(senderGroups).length - 1;
+                            return (
+                                <TableCell
+                                    key={idx}
+                                    align="center"
+                                    colSpan={group.count}
+                                    style={{
+                                        backgroundColor: primaryColor,
+                                        color: '#fff',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.7rem',
+                                        borderLeft: `3px solid ${nodeLineColor}`,
+                                        // Aggiungiamo il bordo destro se è l'ultimo gruppo per chiudere la cornice
+                                        borderRight: isLastGroup
+                                            ? `3px solid ${nodeLineColor}`
+                                            : 'none',
+                                        borderBottom: `3px solid ${nodeLineColor}`,
+                                        boxSizing: 'border-box',
+                                        padding: '2px',
+                                    }}
+                                >
+                                    {group.label}
+                                </TableCell>
+                            );
+                        })}
                     </TableRow>
 
                     {/* RIGA 2: LABEL SINGOLI SENDER */}
                     <TableRow style={{ height: 120 }}>
-                        {' '}
-                        {/* Altezza maggiore per ospitare i nomi verticali */}
                         <TableCell
                             colSpan={2}
                             style={{
@@ -214,7 +219,6 @@ const MatrixBase = ({
                                 key={receiver.id}
                                 style={{ height: cellSize }}
                             >
-                                {/* NODO RECEIVER (VERTICALE) */}
                                 {isFirstR && (
                                     <TableCell
                                         rowSpan={rGroup.count}
@@ -244,7 +248,6 @@ const MatrixBase = ({
                                     </TableCell>
                                 )}
 
-                                {/* LABEL RECEIVER */}
                                 <TableCell
                                     style={{
                                         backgroundColor: '#f5f5f5',
@@ -275,7 +278,6 @@ const MatrixBase = ({
                                     </Typography>
                                 </TableCell>
 
-                                {/* CROSSPOINTS QUADRATI */}
                                 {senders.map((sender, sIdx) => {
                                     const isConnected =
                                         connections[receiver.id] === sender.id;
