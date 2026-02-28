@@ -3,9 +3,9 @@ import MatrixBase from './MatrixBase';
 import { ThemeContext } from '../../theme/ThemeContext'; // Importiamo il contesto del tema
 
 const MatrixVideo = ({ data }) => {
-    const { theme } = useContext(ThemeContext); // Recuperiamo il tema globale
+    const { theme } = useContext(ThemeContext);
 
-    // Stato dei filtri: ora è un oggetto che permette selezioni multiple
+    // Stato filtri: Video attivo di default
     const [activeFilters, setActiveFilters] = useState({
         Video: true,
         Audio: false,
@@ -14,51 +14,61 @@ const MatrixVideo = ({ data }) => {
 
     const [connections, setConnections] = useState({});
 
-    // Funzione per attivare/disattivare i singoli filtri
     const toggleFilter = label => {
-        setActiveFilters(prev => ({
-            ...prev,
-            [label]: !prev[label],
-        }));
+        setActiveFilters(prev => ({ ...prev, [label]: !prev[label] }));
     };
 
-    // --- 1. LOGICA DI ELABORAZIONE DATI CON FILTRI MULTIPLI ---
     const processed = useMemo(() => {
-        const normalize = items =>
-            Array.isArray(items) ? items : Object.values(items || {});
+        // Funzione helper per trasformare oggetti in array
+        const normalize = items => {
+            if (!items) return [];
+            return Array.isArray(items) ? items : Object.values(items);
+        };
+
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
 
         const getCategory = item => {
-            switch (item.format) {
-                case 'urn:x-nmos:format:video':
-                    return 'Video';
-                case 'urn:x-nmos:format:audio':
-                    return 'Audio';
-                case 'urn:x-nmos:format:data':
-                    return 'Anc';
-                default:
-                    return 'Altro';
-            }
+            const fmt = item.format || '';
+            if (fmt.includes(':video')) return 'Video';
+            if (fmt.includes(':audio')) return 'Audio';
+            if (fmt.includes(':data')) return 'Anc';
+            return 'Altro';
         };
 
+        // Estraiamo e categorizziamo
         const allSenders = normalize(data?.senders)
             .map(s => ({ ...s, cat: getCategory(s) }))
             .sort(sortAlpha);
-
         const allReceivers = normalize(data?.receivers)
             .map(r => ({ ...r, cat: getCategory(r) }))
             .sort(sortAlpha);
 
-        // Filtriamo i nodi: un nodo è visibile se la sua categoria è TRUE in activeFilters
+        // Filtriamo in base ai toggle
+        const filteredSenders = allSenders.filter(s => activeFilters[s.cat]);
+        const filteredReceivers = allReceivers.filter(
+            r => activeFilters[r.cat]
+        );
+
+        // DEBUG LOG: Controlla la console del browser per vedere questi numeri
+        console.log(`Filtri:`, activeFilters);
+        console.log(
+            `Sender trovati: ${filteredSenders.length}`,
+            filteredSenders
+        );
+        console.log(
+            `Receiver trovati: ${filteredReceivers.length}`,
+            filteredReceivers
+        );
+
         return {
-            filteredSenders: allSenders.filter(s => activeFilters[s.cat]),
-            filteredReceivers: allReceivers.filter(r => activeFilters[r.cat]),
-            allReceivers,
+            filteredSenders,
+            filteredReceivers,
+            allReceivers: allReceivers,
         };
     }, [data, activeFilters]);
 
-    // --- 2. SINCRONIZZAZIONE INIZIALE E WEBSOCKET (Invariati) ---
+    // WebSocket e Sincronizzazione (Invariati)
     useEffect(() => {
         if (processed.allReceivers.length > 0) {
             const initialMap = {};
@@ -91,79 +101,47 @@ const MatrixVideo = ({ data }) => {
         return () => ws.close();
     }, []);
 
-    const handleToggleConnection = (r, s, state) =>
-        console.log('PATCH disabilitato', r.id, s.id);
-
-    // --- STILI DINAMICI BASATI SUL TEMA ---
     const dynamicStyles = {
         container: {
-            backgroundColor: theme.background, // Colore sfondo dal tema
-            color: theme.text,
-            minHeight: '100vh',
+            backgroundColor: theme.background || '#121212',
+            color: theme.text || '#ffffff',
             padding: '20px',
+            minHeight: '100vh',
         },
-        filterButton: isActive => ({
+        button: active => ({
             padding: '8px 16px',
             marginRight: '10px',
-            border: `1px solid ${theme.primary}`,
-            backgroundColor: isActive ? theme.primary : 'transparent',
-            color: isActive ? theme.buttonText : theme.text,
             cursor: 'pointer',
             borderRadius: '4px',
+            border: `1px solid ${theme.primary}`,
+            backgroundColor: active ? theme.primary : 'transparent',
+            color: active ? theme.buttonText || '#000' : theme.text || '#fff',
             fontWeight: 'bold',
-            transition: 'all 0.3s ease',
         }),
-        header: {
-            borderBottom: `1px solid ${theme.border}`,
-            marginBottom: '20px',
-            paddingBottom: '10px',
-        },
     };
 
     return (
         <div style={dynamicStyles.container}>
-            <header style={dynamicStyles.header}>
-                <h3 style={{ color: theme.primary }}>
-                    Visualizzazione Dinamica Crosspoint
-                </h3>
-                <div style={{ marginTop: '15px' }}>
-                    <span style={{ marginRight: '15px', fontSize: '0.9rem' }}>
-                        Filtri attivi:
-                    </span>
-                    {['Video', 'Audio', 'Anc'].map(label => (
-                        <button
-                            key={label}
-                            onClick={() => toggleFilter(label)}
-                            style={dynamicStyles.filterButton(
-                                activeFilters[label]
-                            )}
-                        >
-                            {label} {activeFilters[label] ? '✓' : ''}
-                        </button>
-                    ))}
-                </div>
-            </header>
-
-            <div className="matrix-content">
-                {processed.filteredReceivers.length > 0 ? (
-                    <MatrixBase
-                        senders={processed.filteredSenders}
-                        receivers={processed.filteredReceivers}
-                        connections={connections}
-                        onConnect={handleToggleConnection}
-                        theme={theme} // Passiamo il tema anche alla base se necessario
-                    />
-                ) : (
-                    <div
-                        style={{
-                            padding: '50px',
-                            textAlign: 'center',
-                            opacity: 0.5,
-                        }}
+            <div style={{ marginBottom: '20px' }}>
+                {['Video', 'Audio', 'Anc'].map(cat => (
+                    <button
+                        key={cat}
+                        style={dynamicStyles.button(activeFilters[cat])}
+                        onClick={() => toggleFilter(cat)}
                     >
-                        Seleziona almeno un filtro per visualizzare la matrice.
-                    </div>
-                )}
+                        {cat}
+                    </button>
+                ))}
+            </div>
+
+            {/* Assicurati che MatrixBase riceva entrambi gli array filtrati */}
+            <div style={{ overflowX: 'auto' }}>
+                <MatrixBase
+                    senders={processed.filteredSenders}
+                    receivers={processed.filteredReceivers}
+                    connections={connections}
+                    onConnect={() => {}}
+                />
             </div>
         </div>
     );
