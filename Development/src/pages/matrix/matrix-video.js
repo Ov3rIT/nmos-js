@@ -1,11 +1,11 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import MatrixBase from './MatrixBase';
-import { ThemeContext } from '../../theme/ThemeContext'; // Importiamo il contesto del tema
+import { ThemeContext } from '../theme/ThemeContext';
 
 const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext);
 
-    // Partiamo con tutti i filtri attivi per vedere tutto
+    // Stato filtri: partiamo con tutto attivo
     const [activeFilters, setActiveFilters] = useState({
         Video: true,
         Audio: true,
@@ -27,34 +27,40 @@ const MatrixVideo = ({ data }) => {
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
 
-        // LOGICA DI CATEGORIZZAZIONE POTENZIATA
+        // Categorizzazione migliorata per evitare che tutto finisca in Video
         const getCategory = item => {
             const fmt = item.format || '';
-            // Debug: se è un sender, vediamo cosa legge
             if (fmt.includes('audio')) return 'Audio';
             if (fmt.includes('video')) return 'Video';
             if (fmt.includes('data') || fmt.includes('mux')) return 'Anc';
-
-            // FALLBACK: Se non capisce il formato, lo assegniamo a Video
-            // per evitare che il sender scompaia nel nulla
-            return 'Video';
+            // Se non c'è formato, proviamo a guardare la label come ultima spiaggia
+            const label = (item.label || '').toLowerCase();
+            if (label.includes('aud')) return 'Audio';
+            if (label.includes('vid')) return 'Video';
+            if (label.includes('anc') || label.includes('data')) return 'Anc';
+            return 'Video'; // Default
         };
 
+        // NORMALIZZIAMO TUTTO: Senders, Receivers, Devices e Nodes
         const allSenders = normalize(data?.senders)
             .map(s => ({ ...s, cat: getCategory(s) }))
             .sort(sortAlpha);
         const allReceivers = normalize(data?.receivers)
             .map(r => ({ ...r, cat: getCategory(r) }))
             .sort(sortAlpha);
+        const allDevices = normalize(data?.devices);
+        const allNodes = normalize(data?.nodes);
 
         return {
             filteredSenders: allSenders.filter(s => activeFilters[s.cat]),
             filteredReceivers: allReceivers.filter(r => activeFilters[r.cat]),
+            devices: allDevices,
+            nodes: allNodes,
             allReceivers,
         };
     }, [data, activeFilters]);
 
-    // WebSocket e Sync Iniziale (Invariati)
+    // --- Sincronizzazione WebSocket (Invariata) ---
     useEffect(() => {
         if (processed.allReceivers.length > 0) {
             const initialMap = {};
@@ -93,49 +99,51 @@ const MatrixVideo = ({ data }) => {
             color: theme.text,
             padding: '20px',
             minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
         },
-        header: { marginBottom: '20px' },
+        header: {
+            marginBottom: '20px',
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'center',
+        },
         button: active => ({
-            padding: '10px 20px',
-            marginRight: '10px',
+            padding: '8px 16px',
             cursor: 'pointer',
-            border: `2px solid ${theme.primary}`,
+            border: `1px solid ${theme.primary}`,
             backgroundColor: active ? theme.primary : 'transparent',
             color: active ? '#000' : theme.text,
             borderRadius: '4px',
             fontWeight: 'bold',
         }),
-        matrixWrapper: {
-            flex: 1,
-            overflow: 'auto', // Fondamentale per vedere i Sender se sono molti
-            border: `1px solid ${theme.border || '#333'}`,
-            borderRadius: '8px',
-        },
     };
 
     return (
         <div style={styles.container}>
             <div style={styles.header}>
+                <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                    FILTRI NMOS:
+                </span>
                 {['Video', 'Audio', 'Anc'].map(cat => (
                     <button
                         key={cat}
                         style={styles.button(activeFilters[cat])}
                         onClick={() => toggleFilter(cat)}
                     >
-                        {cat} {activeFilters[cat] ? 'ON' : 'OFF'}
+                        {cat}
                     </button>
                 ))}
             </div>
 
-            <div style={styles.matrixWrapper}>
-                {/* IMPORTANTE: Se MatrixBase non riceve i sender, 
-                    potrebbe dipendere dal fatto che 'processed.filteredSenders' è 0.
+            <div style={{ overflow: 'auto' }}>
+                {/* PASSAGGIO CRUCIALE: 
+                  Dobbiamo passare devices e nodes a MatrixBase affinché possa 
+                  risolvere i nomi dei dispositivi dai device_id dei nodi.
                 */}
                 <MatrixBase
                     senders={processed.filteredSenders}
                     receivers={processed.filteredReceivers}
+                    devices={processed.devices}
+                    nodes={processed.nodes}
                     connections={connections}
                     onConnect={() => {}}
                 />
