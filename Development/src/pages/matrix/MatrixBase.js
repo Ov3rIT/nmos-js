@@ -24,6 +24,12 @@ const MatrixBase = ({
         return dev ? dev.label : 'Unknown Device';
     };
 
+    // Helper per capire se un elemento è l'ultimo del suo gruppo (per i bordi)
+    const isLastInGroup = (currentIdx, array, key) => {
+        if (currentIdx === array.length - 1) return false;
+        return array[currentIdx][key] !== array[currentIdx + 1][key];
+    };
+
     const senderGroups = senders.reduce((acc, s) => {
         const devId = s.device_id;
         if (!acc[devId])
@@ -76,7 +82,7 @@ const MatrixBase = ({
                                     color: '#fff',
                                     fontWeight: 'bold',
                                     borderLeft:
-                                        '1px solid rgba(255,255,255,0.2)',
+                                        '2px solid rgba(255,255,255,0.3)',
                                     padding: '6px',
                                     fontSize: '0.75rem',
                                 }}
@@ -96,7 +102,7 @@ const MatrixBase = ({
                         >
                             Destinazioni
                         </TableCell>
-                        {senders.map(sender => (
+                        {senders.map((sender, idx) => (
                             <TableCell
                                 key={sender.id}
                                 align="center"
@@ -104,6 +110,14 @@ const MatrixBase = ({
                                     backgroundColor: lightBg,
                                     color: '#555',
                                     padding: '10px 5px',
+                                    // Bordo verticale di divisione tra NODI
+                                    borderRight: isLastInGroup(
+                                        idx,
+                                        senders,
+                                        'device_id'
+                                    )
+                                        ? `2px solid ${primaryColor}66`
+                                        : '1px solid #eee',
                                 }}
                             >
                                 <div
@@ -122,19 +136,20 @@ const MatrixBase = ({
                 </TableHead>
 
                 <TableBody>
-                    {receivers.map(receiver => {
+                    {receivers.map((receiver, rIdx) => {
                         const group = receiverGroups[receiver.device_id];
                         const isFirstInGroup = group.firstId === receiver.id;
-
-                        // Colore delle righe: grigio chiaro per l'area dati, grigio un po' più scuro per separare i nodi
-                        const rowColor = '#f9f9f9';
-                        const labelCellColor = '#ececec';
+                        const isLastNodeRow = isLastInGroup(
+                            rIdx,
+                            receivers,
+                            'device_id'
+                        );
 
                         return (
                             <TableRow
                                 key={receiver.id}
                                 hover
-                                style={{ backgroundColor: rowColor }}
+                                style={{ backgroundColor: '#f9f9f9' }}
                             >
                                 {isFirstInGroup && (
                                     <TableCell
@@ -146,8 +161,7 @@ const MatrixBase = ({
                                             textAlign: 'center',
                                             padding: '8px 4px',
                                             width: 40,
-                                            borderBottom:
-                                                '1px solid rgba(255,255,255,0.2)',
+                                            borderBottom: `2px solid rgba(255,255,255,0.2)`,
                                         }}
                                     >
                                         <div
@@ -164,9 +178,12 @@ const MatrixBase = ({
 
                                 <TableCell
                                     style={{
-                                        backgroundColor: labelCellColor,
-                                        borderRight: `1px solid #ddd`,
-                                        borderBottom: `1px solid #ddd`,
+                                        backgroundColor: '#ececec',
+                                        borderRight: `2px solid ${primaryColor}44`,
+                                        // Bordo orizzontale di divisione tra NODI
+                                        borderBottom: isLastNodeRow
+                                            ? `2px solid ${primaryColor}66`
+                                            : '1px solid #ddd',
                                         padding: '8px',
                                     }}
                                 >
@@ -181,9 +198,15 @@ const MatrixBase = ({
                                     </Typography>
                                 </TableCell>
 
-                                {senders.map(sender => {
+                                {senders.map((sender, sIdx) => {
                                     const isConnected =
                                         connections[receiver.id] === sender.id;
+                                    const isLastNodeCol = isLastInGroup(
+                                        sIdx,
+                                        senders,
+                                        'device_id'
+                                    );
+
                                     return (
                                         <TableCell
                                             key={`${receiver.id}-${sender.id}`}
@@ -200,11 +223,17 @@ const MatrixBase = ({
                                                 backgroundColor: isConnected
                                                     ? `${primaryColor}22`
                                                     : 'transparent',
-                                                border: '1px solid #eee',
                                                 color: isConnected
                                                     ? primaryColor
                                                     : '#ccc',
                                                 fontSize: '1.1rem',
+                                                // LOGICA BORDI DIFFERENZIATI
+                                                borderRight: isLastNodeCol
+                                                    ? `2px solid ${primaryColor}44`
+                                                    : '1px solid #eee',
+                                                borderBottom: isLastNodeRow
+                                                    ? `2px solid ${primaryColor}44`
+                                                    : '1px solid #eee',
                                             }}
                                         >
                                             {isConnected ? '●' : '○'}
