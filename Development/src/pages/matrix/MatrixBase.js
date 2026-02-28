@@ -20,6 +20,9 @@ const MatrixBase = ({
     primaryColor,
     lightBg,
 }) => {
+    // Dimensione fissa per rendere la griglia quadrata
+    const cellSize = 45;
+
     const getDeviceLabel = deviceId => {
         const dev = devices?.find(d => d.id === deviceId);
         return dev ? dev.label : 'Unknown Device';
@@ -73,19 +76,24 @@ const MatrixBase = ({
             <Table
                 size="small"
                 stickyHeader
-                style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}
+                style={{
+                    tableLayout: 'fixed',
+                    borderCollapse: 'collapse',
+                    width: 'max-content',
+                }}
             >
                 <TableHead>
                     {/* RIGA 1: GRUPPI NODI SENDER */}
-                    <TableRow>
+                    <TableRow style={{ height: cellSize }}>
                         <TableCell
                             style={{
                                 backgroundColor: lightBg,
                                 borderBottom: `3px solid ${nodeLineColor}`,
-                                width: 40,
+                                width: cellSize,
                                 position: 'sticky',
                                 left: 0,
                                 zIndex: 30,
+                                padding: 0,
                             }}
                         />
                         <TableCell
@@ -94,8 +102,9 @@ const MatrixBase = ({
                                 borderBottom: `3px solid ${nodeLineColor}`,
                                 width: 160,
                                 position: 'sticky',
-                                left: 40,
+                                left: cellSize,
                                 zIndex: 30,
+                                padding: 0,
                             }}
                         />
                         {Object.values(senderGroups).map((group, idx) => (
@@ -107,11 +116,11 @@ const MatrixBase = ({
                                     backgroundColor: primaryColor,
                                     color: '#fff',
                                     fontWeight: 'bold',
-                                    padding: '8px',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.7rem',
                                     borderLeft: `3px solid ${nodeLineColor}`,
                                     borderBottom: `3px solid ${nodeLineColor}`,
                                     boxSizing: 'border-box',
+                                    padding: '2px',
                                 }}
                             >
                                 {group.label}
@@ -120,7 +129,9 @@ const MatrixBase = ({
                     </TableRow>
 
                     {/* RIGA 2: LABEL SINGOLI SENDER */}
-                    <TableRow>
+                    <TableRow style={{ height: 120 }}>
+                        {' '}
+                        {/* Altezza maggiore per ospitare i nomi verticali */}
                         <TableCell
                             colSpan={2}
                             style={{
@@ -131,8 +142,9 @@ const MatrixBase = ({
                                 borderRight: `3px solid ${nodeLineColor}`,
                                 position: 'sticky',
                                 left: 0,
-                                top: 37,
+                                top: cellSize,
                                 zIndex: 25,
+                                textAlign: 'center',
                             }}
                         >
                             Destinazioni
@@ -162,10 +174,11 @@ const MatrixBase = ({
                                         borderRight: lastOfNode
                                             ? `3px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
-                                        padding: '10px 5px',
-                                        top: 37,
+                                        padding: '5px 0',
+                                        top: cellSize,
                                         zIndex: 10,
-                                        width: 60,
+                                        width: cellSize,
+                                        minWidth: cellSize,
                                         boxSizing: 'border-box',
                                     }}
                                 >
@@ -173,9 +186,9 @@ const MatrixBase = ({
                                         style={{
                                             writingMode: 'vertical-rl',
                                             transform: 'rotate(180deg)',
-                                            fontSize: '0.7rem',
+                                            fontSize: '0.65rem',
                                             fontWeight: 700,
-                                            whiteSpace: 'nowrap',
+                                            margin: 'auto',
                                         }}
                                     >
                                         {sender.label}
@@ -197,7 +210,10 @@ const MatrixBase = ({
                         );
 
                         return (
-                            <TableRow key={receiver.id} hover>
+                            <TableRow
+                                key={receiver.id}
+                                style={{ height: cellSize }}
+                            >
                                 {/* NODO RECEIVER (VERTICALE) */}
                                 {isFirstR && (
                                     <TableCell
@@ -207,8 +223,8 @@ const MatrixBase = ({
                                             color: '#fff',
                                             fontWeight: 'bold',
                                             textAlign: 'center',
-                                            padding: '8px 4px',
-                                            width: 40,
+                                            padding: '4px',
+                                            width: cellSize,
                                             borderBottom: `3px solid ${nodeLineColor}`,
                                             borderRight: `3px solid ${nodeLineColor}`,
                                             position: 'sticky',
@@ -220,7 +236,7 @@ const MatrixBase = ({
                                             style={{
                                                 writingMode: 'vertical-rl',
                                                 transform: 'rotate(180deg)',
-                                                fontSize: '0.7rem',
+                                                fontSize: '0.65rem',
                                             }}
                                         >
                                             {rGroup.label}
@@ -236,11 +252,15 @@ const MatrixBase = ({
                                         borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
-                                        padding: '8px',
+                                        padding: '0 8px',
                                         position: 'sticky',
-                                        left: 40,
+                                        left: cellSize,
                                         zIndex: 5,
+                                        width: 160,
                                         boxSizing: 'border-box',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
                                     }}
                                 >
                                     <Typography
@@ -248,13 +268,14 @@ const MatrixBase = ({
                                         style={{
                                             color: '#000',
                                             fontWeight: 700,
+                                            fontSize: '0.7rem',
                                         }}
                                     >
                                         {receiver.label}
                                     </Typography>
                                 </TableCell>
 
-                                {/* CROSSPOINTS */}
+                                {/* CROSSPOINTS QUADRATI */}
                                 {senders.map((sender, sIdx) => {
                                     const isConnected =
                                         connections[receiver.id] === sender.id;
@@ -294,7 +315,9 @@ const MatrixBase = ({
                                                 borderBottom: isLastRNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
-                                                padding: '4px',
+                                                width: cellSize,
+                                                height: cellSize,
+                                                padding: 0,
                                                 boxSizing: 'border-box',
                                             }}
                                         >
@@ -302,7 +325,7 @@ const MatrixBase = ({
                                                 <CheckCircleIcon
                                                     style={{
                                                         color: activeGreen,
-                                                        fontSize: '1.3rem',
+                                                        fontSize: '1.2rem',
                                                         display: 'block',
                                                         margin: 'auto',
                                                     }}
@@ -311,7 +334,7 @@ const MatrixBase = ({
                                                 <span
                                                     style={{
                                                         color: '#eee',
-                                                        fontSize: '1.1rem',
+                                                        fontSize: '1rem',
                                                     }}
                                                 >
                                                     ○
