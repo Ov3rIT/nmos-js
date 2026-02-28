@@ -20,17 +20,16 @@ const MatrixBase = ({
     primaryColor,
     lightBg,
 }) => {
-    // Stato per il crosshair
     const [hoveredRow, setHoveredRow] = useState(null);
     const [hoveredCol, setHoveredCol] = useState(null);
 
-    // COSTANTE PER GRIGLIA QUADRATA
-    const cellSize = 45;
+    // COSTANTE RIGIDA: Se vuoi celle più grandi o piccole, cambia solo questo numero
+    const cellSize = 50;
 
     const gridLineColor = '#ddd';
     const nodeLineColor = 'rgb(1, 80, 72)';
     const activeGreen = '#27ae60';
-    const crosshairColor = 'rgba(2, 112, 101, 0.12)'; // Verde tenue per il mirino
+    const crosshairColor = 'rgba(2, 112, 101, 0.12)';
 
     const getDeviceLabel = deviceId => {
         const dev = devices?.find(d => d.id === deviceId);
@@ -73,10 +72,10 @@ const MatrixBase = ({
                 backgroundColor: '#fff',
                 boxShadow: 'none',
                 height: '100%',
-                scrollbarWidth: 'thin',
-                scrollbarColor: `${primaryColor} #f0f0f0`,
+                overflow: 'auto',
             }}
         >
+            {/* TABLE-LAYOUT FIXED è fondamentale per i quadrati */}
             <Table
                 size="small"
                 stickyHeader
@@ -87,7 +86,6 @@ const MatrixBase = ({
                 }}
             >
                 <TableHead>
-                    {/* RIGA 1: NODI SENDER */}
                     <TableRow style={{ height: cellSize }}>
                         <TableCell
                             style={{
@@ -103,7 +101,7 @@ const MatrixBase = ({
                             style={{
                                 backgroundColor: lightBg,
                                 borderBottom: `3px solid ${nodeLineColor}`,
-                                width: 160,
+                                width: 180,
                                 position: 'sticky',
                                 left: cellSize,
                                 zIndex: 40,
@@ -126,7 +124,9 @@ const MatrixBase = ({
                                         Object.values(senderGroups).length - 1
                                             ? `3px solid ${nodeLineColor}`
                                             : 'none',
+                                    height: cellSize,
                                     boxSizing: 'border-box',
+                                    padding: '2px',
                                 }}
                             >
                                 {group.label}
@@ -134,8 +134,9 @@ const MatrixBase = ({
                         ))}
                     </TableRow>
 
-                    {/* RIGA 2: SENDER LABELS (VERTICALI) */}
-                    <TableRow style={{ height: 120 }}>
+                    <TableRow style={{ height: 140 }}>
+                        {' '}
+                        {/* Altezza fissa per i nomi verticali */}
                         <TableCell
                             colSpan={2}
                             style={{
@@ -181,7 +182,9 @@ const MatrixBase = ({
                                     zIndex: 10,
                                     width: cellSize,
                                     minWidth: cellSize,
+                                    maxWidth: cellSize, // Forzatura larghezza
                                     boxSizing: 'border-box',
+                                    overflow: 'hidden',
                                 }}
                             >
                                 <div
@@ -191,6 +194,7 @@ const MatrixBase = ({
                                         fontSize: '0.65rem',
                                         fontWeight: 700,
                                         margin: 'auto',
+                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     {sender.label}
@@ -214,7 +218,9 @@ const MatrixBase = ({
                             <TableRow
                                 key={receiver.id}
                                 style={{
-                                    height: cellSize, // FORZA ALTEZZA QUADRATA
+                                    height: cellSize, // FORZA ALTEZZA RIGA
+                                    minHeight: cellSize,
+                                    maxHeight: cellSize,
                                     backgroundColor:
                                         hoveredRow === rIdx
                                             ? crosshairColor
@@ -229,6 +235,7 @@ const MatrixBase = ({
                                             color: '#fff',
                                             textAlign: 'center',
                                             width: cellSize,
+                                            minWidth: cellSize,
                                             borderBottom: `3px solid ${nodeLineColor}`,
                                             borderRight: `3px solid ${nodeLineColor}`,
                                             position: 'sticky',
@@ -262,7 +269,7 @@ const MatrixBase = ({
                                         position: 'sticky',
                                         left: cellSize,
                                         zIndex: 5,
-                                        width: 160,
+                                        width: 180,
                                         boxSizing: 'border-box',
                                     }}
                                 >
@@ -324,8 +331,9 @@ const MatrixBase = ({
                                                 borderBottom: isLastRNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
-                                                width: cellSize, // FORZA LARGHEZZA QUADRATA
-                                                height: cellSize,
+                                                width: cellSize,
+                                                minWidth: cellSize,
+                                                height: cellSize, // Forzatura cella
                                                 padding: 0,
                                                 boxSizing: 'border-box',
                                             }}
