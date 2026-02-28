@@ -1,5 +1,5 @@
 import { Box, Button, Typography } from '@material-ui/core';
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { ThemeContext } from '../../theme/ThemeContext';
 import MatrixBase from './MatrixBase';
 
@@ -10,11 +10,14 @@ const MatrixVideo = ({ data }) => {
         Audio: true,
         Anc: true,
     });
+
+    // Stato delle connessioni (mappa receiver_id -> sender_id)
     const [connections, setConnections] = useState({});
 
     const primaryColor = 'rgb(2, 112, 101)';
-    const lightBg = 'rgb(245, 245, 245)'; // Sfondo generale chiaro
+    const lightBg = 'rgb(245, 252, 251)';
 
+    // Elaborazione dati (Filtri e Ordinamento)
     const processed = useMemo(() => {
         const normalize = items =>
             Array.isArray(items) ? items : Object.values(items || {});
@@ -62,38 +65,37 @@ const MatrixVideo = ({ data }) => {
         };
     }, [data, activeFilters]);
 
-    useEffect(() => {
-        const rcvs = Array.isArray(data?.receivers)
-            ? data.receivers
-            : Object.values(data?.receivers || {});
-        const initialMap = {};
-        rcvs.forEach(recv => {
-            if (recv.subscription?.sender_id)
-                initialMap[recv.id] = recv.subscription.sender_id;
-        });
-        setConnections(initialMap);
-    }, [data]);
+    // LOGICA DI PATCHING NMOS IS-05
+    const handleConnect = async (receiver, sender, shouldConnect) => {
+        // L'endpoint dipende dal tuo controller NMOS (es. porta 8010 o porta dell'apparecchio)
+        const endpoint = `http://${window.location.hostname}:8010/x-nmos/connection/v1.1/single/receivers/${receiver.id}/staged`;
 
-    useEffect(() => {
-        const ws = new WebSocket(
-            'ws://172.16.1.110:8011/x-nmos/query/v1.3/subscriptions/131230a2-c19d-47b3-98ae-e0a59013ea02'
-        );
-        ws.onmessage = event => {
-            try {
-                const grains = JSON.parse(event.data);
-                if (Array.isArray(grains)) {
-                    const updates = {};
-                    grains.forEach(g => {
-                        if (g.post)
-                            updates[g.post.id] =
-                                g.post.subscription?.sender_id || null;
-                    });
-                    setConnections(prev => ({ ...prev, ...updates }));
-                }
-            } catch (e) {}
+        const payload = {
+            sender_id: shouldConnect ? sender.id : null,
+            master_enable: true,
+            activation: { mode: 'activate_immediate' },
         };
-        return () => ws.close();
-    }, []);
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                // Aggiornamento ottimistico dell'interfaccia
+                setConnections(prev => ({
+                    ...prev,
+                    [receiver.id]: shouldConnect ? sender.id : null,
+                }));
+            } else {
+                console.error('Errore NMOS IS-05:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Errore di rete durante la patch:', error);
+        }
+    };
 
     return (
         <Box
@@ -101,7 +103,9 @@ const MatrixVideo = ({ data }) => {
                 backgroundColor: lightBg,
                 color: '#333',
                 padding: '20px',
-                minHeight: '100vh',
+                height: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
             }}
         >
             <Box display="flex" alignItems="center" mb={2} gridGap={10}>
@@ -137,10 +141,10 @@ const MatrixVideo = ({ data }) => {
 
             <Box
                 style={{
-                    border: `1px solid ${primaryColor}22`,
+                    flex: 1,
+                    overflow: 'auto',
+                    border: `1px solid ${primaryColor}44`,
                     borderRadius: '4px',
-                    overflow: 'hidden',
-                    backgroundColor: '#fff',
                 }}
             >
                 <MatrixBase
@@ -148,9 +152,9 @@ const MatrixVideo = ({ data }) => {
                     receivers={processed.receivers}
                     devices={processed.devices}
                     connections={connections}
+                    onConnect={handleConnect} // Passiamo la logica reale
                     primaryColor={primaryColor}
                     lightBg={lightBg}
-                    onConnect={() => {}}
                 />
             </Box>
         </Box>
