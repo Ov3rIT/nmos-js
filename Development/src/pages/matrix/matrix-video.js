@@ -8,78 +8,49 @@ const MatrixVideo = ({ data }) => {
 
     const allSenders = normalize(data?.senders);
     const allReceivers = normalize(data?.receivers);
-    const allFlows = normalize(data?.flows);
-    const allDevices = normalize(data?.devices);
-    const allNodes = normalize(data?.nodes);
 
-    // 1. LOGICA DI ILLUMINAZIONE (Verde = Connesso)
-    // Creiamo un oggetto dove la chiave è l'ID del receiver e il valore è l'ID del sender collegato
+    // 1. Calcolo Connessioni Attive (Illuminazione Verde)
+    // Usiamo la sottoscrizione reale del receiver come nel resto dell'app
     const currentConnections = {};
     allReceivers.forEach(receiver => {
-        // Leggiamo la sottoscrizione attuale dal Registry IS-04
-        const activeSenderId = receiver.subscription?.sender_id;
-        if (activeSenderId) {
-            currentConnections[receiver.id] = activeSenderId;
+        if (receiver.subscription?.sender_id) {
+            currentConnections[receiver.id] = receiver.subscription.sender_id;
         }
     });
 
-    // 2. LOGICA DI CONNESSIONE
+    // 2. Logica di connessione identica a ConnectButtons.js riga 21
     const handleToggleConnection = (receiver, sender, isConnected) => {
-        const fullReceiver =
-            allReceivers.find(r => r.id === receiver.id) || receiver;
+        // Recuperiamo gli oggetti completi dal nostro "store" (data)
+        // Questo garantisce che abbiano tutti i campi (caps, control_endpoints, transport, ecc.)
+        const fullReceiver = allReceivers.find(r => r.id === receiver.id);
+        const fullSender = isConnected
+            ? null
+            : allSenders.find(s => s.id === sender.id);
 
-        // Risoluzione IP del Nodo
-        let nodeId = fullReceiver.node_id;
-        if (!nodeId && fullReceiver.device_id) {
-            const dev = allDevices.find(d => d.id === fullReceiver.device_id);
-            nodeId = dev?.node_id;
-        }
-        const node = allNodes.find(n => n.id === nodeId);
+        console.log(
+            `Tentativo di ${isConnected ? 'Disconnessione' : 'Connessione'} per:`,
+            fullReceiver.label
+        );
 
-        if (!node || !node.api?.endpoints) {
-            console.error('Endpoint di controllo non trovato per questo nodo.');
-            return;
-        }
-
-        const ep = node.api.endpoints[0];
-        const version =
-            node.api.versions && node.api.versions.includes('v1.1')
-                ? 'v1.1'
-                : 'v1.0';
-
-        // Costruiamo l'oggetto arricchito per soddisfare makeConnection.js
-        // Forziamo il transport per evitare "Invalid endpoint"
-        const transportType =
-            fullReceiver.transport || 'urn:x-nmos:transport:rtp';
-
-        const enrichedReceiver = {
-            ...fullReceiver,
-            transport: transportType,
-            control_endpoints: [
-                {
-                    href: `${ep.protocol}://${ep.host}:${ep.port}/x-nmos/connection/${version}/`,
-                    type: transportType,
-                },
-            ],
-        };
-
-        // Esecuzione tramite libreria originale del progetto
-        // Se isConnected è true, stiamo cliccando su un verde -> disconnettiamo (passando null)
-        makeConnection(enrichedReceiver, isConnected ? null : sender)
+        // Chiamata identica a: makeConnection(receiver, sender)
+        // Se fullSender è null, la libreria esegue il "parking" (disconnessione)
+        makeConnection(fullReceiver, fullSender)
             .then(() => {
-                console.log('Comando inviato con successo.');
+                console.log('Operazione completata con successo (IS-05)');
             })
             .catch(err => {
-                console.error('Errore libreria makeConnection:', err);
+                console.error('Errore durante makeConnection:', err);
+                // Se vedi ancora Invalid Endpoint qui, significa che il Registry
+                // non sta fornendo i control_endpoints nel JSON del receiver.
             });
     };
 
     return (
         <MatrixBase
-            devices={allDevices}
+            devices={data.devices}
             senders={allSenders}
             receivers={allReceivers}
-            connections={currentConnections} // Qui passiamo le connessioni attive per il verde
+            connections={currentConnections}
             onConnect={handleToggleConnection}
         />
     );
