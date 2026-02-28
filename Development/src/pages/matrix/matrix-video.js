@@ -13,7 +13,7 @@ const MatrixVideo = ({ data }) => {
     const [connections, setConnections] = useState({});
 
     const primaryColor = 'rgb(2, 112, 101)';
-    const lightBg = 'rgb(245, 252, 251)'; // Sfondo generale chiaro
+    const lightBg = 'rgb(245, 245, 245)'; // Sfondo generale chiaro
 
     const processed = useMemo(() => {
         const normalize = items =>
