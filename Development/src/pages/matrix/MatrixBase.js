@@ -20,15 +20,17 @@ const MatrixBase = ({
     primaryColor,
     lightBg,
 }) => {
-    // Stato per gestire l'evidenziazione (Crosshair)
+    // Stato per il crosshair
     const [hoveredRow, setHoveredRow] = useState(null);
     const [hoveredCol, setHoveredCol] = useState(null);
 
+    // COSTANTE PER GRIGLIA QUADRATA
     const cellSize = 45;
+
     const gridLineColor = '#ddd';
     const nodeLineColor = 'rgb(1, 80, 72)';
     const activeGreen = '#27ae60';
-    const crosshairColor = 'rgba(2, 112, 101, 0.08)'; // Colore tenue per il mirino
+    const crosshairColor = 'rgba(2, 112, 101, 0.12)'; // Verde tenue per il mirino
 
     const getDeviceLabel = deviceId => {
         const dev = devices?.find(d => d.id === deviceId);
@@ -71,7 +73,8 @@ const MatrixBase = ({
                 backgroundColor: '#fff',
                 boxShadow: 'none',
                 height: '100%',
-                overflow: 'auto',
+                scrollbarWidth: 'thin',
+                scrollbarColor: `${primaryColor} #f0f0f0`,
             }}
         >
             <Table
@@ -93,7 +96,7 @@ const MatrixBase = ({
                                 width: cellSize,
                                 position: 'sticky',
                                 left: 0,
-                                zIndex: 30,
+                                zIndex: 40,
                             }}
                         />
                         <TableCell
@@ -103,7 +106,7 @@ const MatrixBase = ({
                                 width: 160,
                                 position: 'sticky',
                                 left: cellSize,
-                                zIndex: 30,
+                                zIndex: 40,
                             }}
                         />
                         {Object.values(senderGroups).map((group, idx) => (
@@ -118,6 +121,11 @@ const MatrixBase = ({
                                     fontSize: '0.7rem',
                                     borderLeft: `3px solid ${nodeLineColor}`,
                                     borderBottom: `3px solid ${nodeLineColor}`,
+                                    borderRight:
+                                        idx ===
+                                        Object.values(senderGroups).length - 1
+                                            ? `3px solid ${nodeLineColor}`
+                                            : 'none',
                                     boxSizing: 'border-box',
                                 }}
                             >
@@ -126,7 +134,7 @@ const MatrixBase = ({
                         ))}
                     </TableRow>
 
-                    {/* RIGA 2: SENDER LABELS */}
+                    {/* RIGA 2: SENDER LABELS (VERTICALI) */}
                     <TableRow style={{ height: 120 }}>
                         <TableCell
                             colSpan={2}
@@ -139,7 +147,7 @@ const MatrixBase = ({
                                 position: 'sticky',
                                 left: 0,
                                 top: cellSize,
-                                zIndex: 25,
+                                zIndex: 35,
                                 textAlign: 'center',
                             }}
                         >
@@ -152,8 +160,8 @@ const MatrixBase = ({
                                 style={{
                                     backgroundColor:
                                         hoveredCol === idx
-                                            ? `${primaryColor}15`
-                                            : lightBg, // Evidenzia testata se colonna hovered
+                                            ? `${primaryColor}20`
+                                            : lightBg,
                                     borderBottom: `3px solid ${nodeLineColor}`,
                                     borderLeft: isFirstInGroup(
                                         idx,
@@ -172,8 +180,8 @@ const MatrixBase = ({
                                     top: cellSize,
                                     zIndex: 10,
                                     width: cellSize,
+                                    minWidth: cellSize,
                                     boxSizing: 'border-box',
-                                    transition: 'background-color 0.2s',
                                 }}
                             >
                                 <div
@@ -206,11 +214,11 @@ const MatrixBase = ({
                             <TableRow
                                 key={receiver.id}
                                 style={{
-                                    height: cellSize,
+                                    height: cellSize, // FORZA ALTEZZA QUADRATA
                                     backgroundColor:
                                         hoveredRow === rIdx
                                             ? crosshairColor
-                                            : 'transparent', // Evidenzia riga
+                                            : 'transparent',
                                 }}
                             >
                                 {isFirstR && (
@@ -245,8 +253,8 @@ const MatrixBase = ({
                                     style={{
                                         backgroundColor:
                                             hoveredRow === rIdx
-                                                ? `${primaryColor}22`
-                                                : '#f5f5f5', // Evidenzia label receiver
+                                                ? `${primaryColor}25`
+                                                : '#f5f5f5',
                                         borderRight: `3px solid ${nodeLineColor}`,
                                         borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
@@ -301,7 +309,6 @@ const MatrixBase = ({
                                             }
                                             style={{
                                                 cursor: 'pointer',
-                                                // Logica Mirino: se riga o colonna corrispondono, colora la cella
                                                 backgroundColor: isConnected
                                                     ? `${activeGreen}22`
                                                     : hoveredRow === rIdx ||
@@ -317,10 +324,10 @@ const MatrixBase = ({
                                                 borderBottom: isLastRNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
-                                                width: cellSize,
+                                                width: cellSize, // FORZA LARGHEZZA QUADRATA
+                                                height: cellSize,
+                                                padding: 0,
                                                 boxSizing: 'border-box',
-                                                transition:
-                                                    'background-color 0.1s',
                                             }}
                                         >
                                             {isConnected ? (
@@ -339,7 +346,7 @@ const MatrixBase = ({
                                                             hoveredRow ===
                                                                 rIdx ||
                                                             hoveredCol === sIdx
-                                                                ? '#bbb'
+                                                                ? '#aaa'
                                                                 : '#eee',
                                                         fontSize: '1rem',
                                                     }}
