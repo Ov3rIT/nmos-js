@@ -24,9 +24,9 @@ const MatrixBase = ({
         return dev ? dev.label : 'Unknown Device';
     };
 
-    // Helper per capire se un elemento è l'ultimo del suo gruppo (per i bordi)
+    // Funzione per identificare il cambio di nodo
     const isLastInGroup = (currentIdx, array, key) => {
-        if (currentIdx === array.length - 1) return false;
+        if (currentIdx === array.length - 1) return true; // L'ultimo in assoluto chiude il bordo
         return array[currentIdx][key] !== array[currentIdx + 1][key];
     };
 
@@ -50,6 +50,10 @@ const MatrixBase = ({
         return acc;
     }, {});
 
+    // Definizione colori bordi
+    const gridLineColor = '#bbb'; // Grigio più scuro per la griglia standard
+    const nodeLineColor = 'rgb(1, 80, 72)'; // Una tonalità più scura e intensa del tuo primario
+
     return (
         <TableContainer
             component={Paper}
@@ -61,14 +65,14 @@ const MatrixBase = ({
                         <TableCell
                             style={{
                                 backgroundColor: lightBg,
-                                borderBottom: `2px solid ${primaryColor}`,
+                                borderBottom: `3px solid ${nodeLineColor}`,
                                 width: 40,
                             }}
                         />
                         <TableCell
                             style={{
                                 backgroundColor: lightBg,
-                                borderBottom: `2px solid ${primaryColor}`,
+                                borderBottom: `3px solid ${nodeLineColor}`,
                                 minWidth: 160,
                             }}
                         />
@@ -81,8 +85,7 @@ const MatrixBase = ({
                                     backgroundColor: primaryColor,
                                     color: '#fff',
                                     fontWeight: 'bold',
-                                    borderLeft:
-                                        '2px solid rgba(255,255,255,0.3)',
+                                    borderLeft: `3px solid ${nodeLineColor}`,
                                     padding: '6px',
                                     fontSize: '0.75rem',
                                 }}
@@ -98,6 +101,7 @@ const MatrixBase = ({
                                 backgroundColor: lightBg,
                                 color: primaryColor,
                                 fontWeight: 'bold',
+                                borderBottom: `3px solid ${nodeLineColor}`,
                             }}
                         >
                             Destinazioni
@@ -108,16 +112,16 @@ const MatrixBase = ({
                                 align="center"
                                 style={{
                                     backgroundColor: lightBg,
-                                    color: '#555',
+                                    color: '#444',
                                     padding: '10px 5px',
-                                    // Bordo verticale di divisione tra NODI
+                                    borderBottom: `3px solid ${nodeLineColor}`,
                                     borderRight: isLastInGroup(
                                         idx,
                                         senders,
                                         'device_id'
                                     )
-                                        ? `2px solid ${primaryColor}66`
-                                        : '1px solid #eee',
+                                        ? `3px solid ${nodeLineColor}`
+                                        : `1px solid ${gridLineColor}`,
                                 }}
                             >
                                 <div
@@ -125,7 +129,7 @@ const MatrixBase = ({
                                         writingMode: 'vertical-rl',
                                         transform: 'rotate(180deg)',
                                         fontSize: '0.7rem',
-                                        fontWeight: 600,
+                                        fontWeight: 700,
                                     }}
                                 >
                                     {sender.label}
@@ -149,7 +153,7 @@ const MatrixBase = ({
                             <TableRow
                                 key={receiver.id}
                                 hover
-                                style={{ backgroundColor: '#f9f9f9' }}
+                                style={{ backgroundColor: '#fdfdfd' }}
                             >
                                 {isFirstInGroup && (
                                     <TableCell
@@ -161,7 +165,8 @@ const MatrixBase = ({
                                             textAlign: 'center',
                                             padding: '8px 4px',
                                             width: 40,
-                                            borderBottom: `2px solid rgba(255,255,255,0.2)`,
+                                            borderBottom: `3px solid ${nodeLineColor}`,
+                                            borderRight: `1px solid ${nodeLineColor}`,
                                         }}
                                     >
                                         <div
@@ -178,20 +183,19 @@ const MatrixBase = ({
 
                                 <TableCell
                                     style={{
-                                        backgroundColor: '#ececec',
-                                        borderRight: `2px solid ${primaryColor}44`,
-                                        // Bordo orizzontale di divisione tra NODI
+                                        backgroundColor: '#f0f0f0',
+                                        borderRight: `3px solid ${nodeLineColor}`,
                                         borderBottom: isLastNodeRow
-                                            ? `2px solid ${primaryColor}66`
-                                            : '1px solid #ddd',
+                                            ? `3px solid ${nodeLineColor}`
+                                            : `1px solid ${gridLineColor}`,
                                         padding: '8px',
                                     }}
                                 >
                                     <Typography
                                         variant="caption"
                                         style={{
-                                            color: '#333',
-                                            fontWeight: 600,
+                                            color: '#000',
+                                            fontWeight: 700,
                                         }}
                                     >
                                         {receiver.label}
@@ -225,15 +229,16 @@ const MatrixBase = ({
                                                     : 'transparent',
                                                 color: isConnected
                                                     ? primaryColor
-                                                    : '#ccc',
-                                                fontSize: '1.1rem',
-                                                // LOGICA BORDI DIFFERENZIATI
-                                                borderRight: isLastNodeCol
-                                                    ? `2px solid ${primaryColor}44`
-                                                    : '1px solid #eee',
+                                                    : '#888',
+                                                fontSize: '1.2rem',
+                                                // Bordo orizzontale
                                                 borderBottom: isLastNodeRow
-                                                    ? `2px solid ${primaryColor}44`
-                                                    : '1px solid #eee',
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : `1px solid ${gridLineColor}`,
+                                                // Bordo verticale
+                                                borderRight: isLastNodeCol
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : `1px solid ${gridLineColor}`,
                                             }}
                                         >
                                             {isConnected ? '●' : '○'}
