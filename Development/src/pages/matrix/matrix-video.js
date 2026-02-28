@@ -103,7 +103,7 @@ const MatrixVideo = ({ data }) => {
             cursor: 'pointer',
             border: `2px solid ${theme.primary}`,
             backgroundColor: active ? theme.primary : 'transparent',
-            color: active ? '#ffffff' : theme.text,
+            color: active ? '#000' : theme.text,
             borderRadius: '4px',
             fontWeight: 'bold',
         }),
