@@ -1,84 +1,121 @@
 import React from 'react';
-import { Table } from '@material-ui/core'; // Assumendo l'uso di semantic-ui come nel repo originale
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
+    Typography,
+} from '@material-ui/core';
 
 const MatrixBase = ({
     senders,
     receivers,
     devices,
-    nodes,
     connections,
     onConnect,
     onNodeClick,
 }) => {
-    // Funzione helper per trovare il nome del Device partendo dal device_id
+    // Funzione per risolvere il nome del device
     const getDeviceLabel = deviceId => {
+        if (!devices) return 'Unknown';
         const dev = devices.find(d => d.id === deviceId);
         return dev ? dev.label : 'Unknown Device';
     };
 
     return (
-        <div className="matrix-base" style={{ padding: '10px' }}>
-            <Table celled structured unstackable inverted size="small">
-                <Table.Header>
-                    <Table.Row>
-                        <Table.HeaderCell style={{ minWidth: '150px' }}>
+        <TableContainer
+            component={Paper}
+            style={{ backgroundColor: 'transparent', boxShadow: 'none' }}
+        >
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell
+                            style={{
+                                minWidth: 200,
+                                backgroundColor: '#1a1a1a',
+                                color: '#fff',
+                            }}
+                        >
                             Receivers \ Senders
-                        </Table.HeaderCell>
+                        </TableCell>
                         {senders.map(sender => (
-                            <Table.HeaderCell
+                            <TableCell
                                 key={sender.id}
-                                className="rotate-text"
-                                onClick={() => onNodeClick(sender.device_id)} // CLICK SUL SENDER DEVICE
+                                align="center"
+                                onClick={() =>
+                                    onNodeClick && onNodeClick(sender.device_id)
+                                }
                                 style={{
                                     cursor: 'pointer',
-                                    textAlign: 'center',
+                                    backgroundColor: '#1a1a1a',
+                                    color: '#fff',
+                                    padding: '10px 5px',
                                 }}
-                                title={`Dispositivo: ${getDeviceLabel(sender.device_id)}. Clicca per nascondere.`}
                             >
                                 <div
                                     style={{
                                         writingMode: 'vertical-rl',
                                         transform: 'rotate(180deg)',
-                                        padding: '5px',
+                                        fontSize: '0.75rem',
+                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     <strong>
                                         {getDeviceLabel(sender.device_id)}
                                     </strong>
-                                    <br />
-                                    <small>{sender.label}</small>
+                                    <div style={{ opacity: 0.7, marginTop: 4 }}>
+                                        {sender.label}
+                                    </div>
                                 </div>
-                            </Table.HeaderCell>
+                            </TableCell>
                         ))}
-                    </Table.Row>
-                </Table.Header>
-
-                <Table.Body>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
                     {receivers.map(receiver => (
-                        <Table.Row key={receiver.id}>
-                            <Table.Cell
-                                onClick={() => onNodeClick(receiver.device_id)} // CLICK SUL RECEIVER DEVICE
+                        <TableRow key={receiver.id}>
+                            <TableCell
+                                onClick={() =>
+                                    onNodeClick &&
+                                    onNodeClick(receiver.device_id)
+                                }
                                 style={{
                                     cursor: 'pointer',
-                                    fontWeight: 'bold',
+                                    color: '#fff',
+                                    borderRight:
+                                        '1px solid rgba(255,255,255,0.1)',
+                                    backgroundColor: '#1a1a1a',
                                 }}
-                                title="Clicca per nascondere questo dispositivo"
                             >
-                                <div>{getDeviceLabel(receiver.device_id)}</div>
-                                <div
-                                    style={{ fontSize: '0.85em', opacity: 0.7 }}
+                                <Typography
+                                    variant="caption"
+                                    display="block"
+                                    style={{
+                                        fontWeight: 'bold',
+                                        color: '#fff',
+                                    }}
+                                >
+                                    {getDeviceLabel(receiver.device_id)}
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    style={{ opacity: 0.6, color: '#fff' }}
                                 >
                                     {receiver.label}
-                                </div>
-                            </Table.Cell>
+                                </Typography>
+                            </TableCell>
 
                             {senders.map(sender => {
                                 const isConnected =
                                     connections[receiver.id] === sender.id;
                                 return (
-                                    <Table.Cell
+                                    <TableCell
                                         key={`${receiver.id}-${sender.id}`}
-                                        textAlign="center"
+                                        align="center"
                                         onClick={() =>
                                             onConnect(
                                                 receiver,
@@ -89,25 +126,24 @@ const MatrixBase = ({
                                         style={{
                                             cursor: 'pointer',
                                             backgroundColor: isConnected
-                                                ? '#27ae60'
+                                                ? 'rgba(39, 174, 96, 0.3)'
                                                 : 'transparent',
-                                            transition: 'background-color 0.2s',
+                                            border: '1px solid rgba(255,255,255,0.05)',
+                                            color: isConnected
+                                                ? '#2ecc71'
+                                                : '#444',
+                                            fontSize: '1.2rem',
                                         }}
                                     >
                                         {isConnected ? '●' : '○'}
-                                    </Table.Cell>
+                                    </TableCell>
                                 );
                             })}
-                        </Table.Row>
+                        </TableRow>
                     ))}
-                </Table.Body>
+                </TableBody>
             </Table>
-
-            <style>{`
-                .rotate-text { height: 140px; white-space: nowrap; }
-                .matrix-base td:hover { background-color: rgba(255,255,255,0.1) !important; }
-            `}</style>
-        </div>
+        </TableContainer>
     );
 };
 
