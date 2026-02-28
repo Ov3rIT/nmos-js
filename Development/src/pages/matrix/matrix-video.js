@@ -64,73 +64,89 @@ const MatrixVideo = ({ data }) => {
 
     // LOGICA DI PATCHING DINAMICA
     const handleConnect = async (receiver, sender, shouldConnect) => {
-        const registryIp = '172.16.1.110'; // IP del tuo Registry
+        const registryIp = '172.16.1.110';
         const registryPort = '8010';
+        const registryBase = `http://${registryIp}:${registryPort}/x-nmos/query/v1.3`;
 
         try {
-            // 1. Chiamata al Registry per ottenere i dettagli del DEVICE
-            console.log(
-                `🔍 Risoluzione device per receiver: ${receiver.label}...`
+            // --- STEP 1: RISOLUZIONE DEVICE (IS-04) ---
+            console.log(`🔍 Risoluzione device per: ${receiver.label}`);
+            const devRes = await fetch(
+                `${registryBase}/devices/${receiver.device_id}`
             );
-            const deviceResponse = await fetch(
-                `http://${registryIp}:${registryPort}/x-nmos/query/v1.3/devices/${receiver.device_id}`
+            if (!devRes.ok) throw new Error('Device non trovato');
+            const devData = await devRes.json();
+
+            const control = devData.controls?.find(c =>
+                c.type.includes('sr-ctrl')
             );
+            if (!control) throw new Error('Il device non supporta IS-05');
 
-            if (!deviceResponse.ok)
-                throw new Error('Device non trovato nel Registry');
+            const is05Endpoint = `${control.href.replace(/\/$/, '')}/single/receivers/${receiver.id}/staged`;
 
-            const deviceData = await deviceResponse.json();
-
-            // 2. Estrazione dell'URL IS-05 dai controlli del Device
-            // Cerchiamo preferibilmente la v1.1, altrimenti la v1.0
-            const control =
-                deviceData.controls?.find(
-                    c => c.type === 'urn:x-nmos:control:sr-ctrl/v1.1'
-                ) ||
-                deviceData.controls?.find(
-                    c => c.type === 'urn:x-nmos:control:sr-ctrl/v1.0'
-                );
-
-            if (!control) {
-                console.error(
-                    '❌ Il device non espone controlli IS-05 (sr-ctrl)'
-                );
-                return;
-            }
-
-            // 3. Costruzione dell'URL finale verso il DEVICE reale
-            // Puliamo l'href da eventuali slash finali e aggiungiamo il percorso standard
-            const baseIs05 = control.href.replace(/\/$/, '');
-            const finalEndpoint = `${baseIs05}/single/receivers/${receiver.id}/staged`;
-
-            console.log(`📡 Puntando al Device Reale: ${finalEndpoint}`);
-
-            const payload = {
-                sender_id: shouldConnect ? sender.id : null,
+            // PREPARAZIONE PAYLOAD BASE
+            let payload = {
                 master_enable: true,
                 activation: { mode: 'activate_immediate' },
             };
 
-            // 4. Esecuzione della PATCH reale sul Device
-            const patchResponse = await fetch(finalEndpoint, {
+            if (shouldConnect) {
+                // --- STEP 2: RECUPERO SDP DAL SENDER (IS-04) ---
+                console.log(`📡 Recupero Flow per sender: ${sender.label}`);
+                // Un sender ha un flow_id associato
+                const flowRes = await fetch(
+                    `${registryBase}/flows/${sender.flow_id}`
+                );
+                if (!flowRes.ok)
+                    throw new Error('Flow non trovato per questo sender');
+                const flowData = await flowRes.json();
+
+                if (!flowData.manifest_href)
+                    throw new Error('SDP non disponibile per questo flow');
+
+                // --- STEP 3: DOWNLOAD DEL CONTENUTO SDP ---
+                console.log(
+                    `📄 Scaricamento SDP da: ${flowData.manifest_href}`
+                );
+                const sdpRes = await fetch(flowData.manifest_href);
+                if (!sdpRes.ok)
+                    throw new Error('Impossibile scaricare il file SDP');
+                const sdpText = await sdpRes.text();
+
+                // --- STEP 4: COSTRUZIONE PAYLOAD CON SDP ---
+                payload = {
+                    ...payload,
+                    sender_id: sender.id,
+                    transport_file: {
+                        data: sdpText,
+                        type: 'application/sdp',
+                    },
+                };
+            } else {
+                // DISCONNESSIONE
+                payload.sender_id = null;
+            }
+
+            // --- STEP 5: PATCH FINALE AL DEVICE ---
+            console.log(`🚀 Iniezione SDP su: ${is05Endpoint}`);
+            const patchRes = await fetch(is05Endpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
-            if (patchResponse.ok) {
+            if (patchRes.ok) {
                 setConnections(prev => ({
                     ...prev,
                     [receiver.id]: shouldConnect ? sender.id : null,
                 }));
-                console.log('✅ Patch eseguita con successo sul device!');
+                console.log('✅ Connessione SDP completata!');
             } else {
-                console.error(
-                    `❌ Errore Patch Device (${patchResponse.status})`
-                );
+                const err = await patchRes.text();
+                console.error('❌ Errore Patch Device:', err);
             }
         } catch (error) {
-            console.error('❌ Errore nel processo di patching:', error.message);
+            console.error('❌ Errore critico:', error.message);
         }
     };
 
