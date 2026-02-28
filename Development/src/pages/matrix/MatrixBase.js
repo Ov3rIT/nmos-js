@@ -9,7 +9,7 @@ import {
     Typography,
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import React from 'react';
+import React, { useState } from 'react';
 
 const MatrixBase = ({
     senders,
@@ -20,22 +20,25 @@ const MatrixBase = ({
     primaryColor,
     lightBg,
 }) => {
+    // Stato per gestire l'evidenziazione (Crosshair)
+    const [hoveredRow, setHoveredRow] = useState(null);
+    const [hoveredCol, setHoveredCol] = useState(null);
+
     const cellSize = 45;
+    const gridLineColor = '#ddd';
+    const nodeLineColor = 'rgb(1, 80, 72)';
+    const activeGreen = '#27ae60';
+    const crosshairColor = 'rgba(2, 112, 101, 0.08)'; // Colore tenue per il mirino
 
     const getDeviceLabel = deviceId => {
         const dev = devices?.find(d => d.id === deviceId);
         return dev ? dev.label : 'Unknown Device';
     };
 
-    const isLastInGroup = (currentIdx, array, key) => {
-        if (currentIdx === array.length - 1) return true; // Forza il bordo spesso sull'ultima colonna/riga totale
-        return array[currentIdx][key] !== array[currentIdx + 1][key];
-    };
-
-    const isFirstInGroup = (currentIdx, array, key) => {
-        if (currentIdx === 0) return true;
-        return array[currentIdx][key] !== array[currentIdx - 1][key];
-    };
+    const isLastInGroup = (idx, arr, key) =>
+        idx === arr.length - 1 || arr[idx][key] !== arr[idx + 1][key];
+    const isFirstInGroup = (idx, arr, key) =>
+        idx === 0 || arr[idx][key] !== arr[idx - 1][key];
 
     const senderGroups = senders.reduce((acc, s) => {
         const devId = s.device_id;
@@ -57,19 +60,18 @@ const MatrixBase = ({
         return acc;
     }, {});
 
-    const gridLineColor = '#ddd';
-    const nodeLineColor = 'rgb(1, 80, 72)';
-    const activeGreen = '#27ae60';
-
     return (
         <TableContainer
             component={Paper}
+            onMouseLeave={() => {
+                setHoveredRow(null);
+                setHoveredCol(null);
+            }}
             style={{
                 backgroundColor: '#fff',
                 boxShadow: 'none',
                 height: '100%',
-                scrollbarWidth: 'thin',
-                scrollbarColor: `${primaryColor} #f0f0f0`,
+                overflow: 'auto',
             }}
         >
             <Table
@@ -82,7 +84,7 @@ const MatrixBase = ({
                 }}
             >
                 <TableHead>
-                    {/* RIGA 1: GRUPPI NODI SENDER */}
+                    {/* RIGA 1: NODI SENDER */}
                     <TableRow style={{ height: cellSize }}>
                         <TableCell
                             style={{
@@ -92,7 +94,6 @@ const MatrixBase = ({
                                 position: 'sticky',
                                 left: 0,
                                 zIndex: 30,
-                                padding: 0,
                             }}
                         />
                         <TableCell
@@ -103,39 +104,29 @@ const MatrixBase = ({
                                 position: 'sticky',
                                 left: cellSize,
                                 zIndex: 30,
-                                padding: 0,
                             }}
                         />
-                        {Object.values(senderGroups).map((group, idx) => {
-                            const isLastGroup =
-                                idx === Object.keys(senderGroups).length - 1;
-                            return (
-                                <TableCell
-                                    key={idx}
-                                    align="center"
-                                    colSpan={group.count}
-                                    style={{
-                                        backgroundColor: primaryColor,
-                                        color: '#fff',
-                                        fontWeight: 'bold',
-                                        fontSize: '0.7rem',
-                                        borderLeft: `3px solid ${nodeLineColor}`,
-                                        // Aggiungiamo il bordo destro se è l'ultimo gruppo per chiudere la cornice
-                                        borderRight: isLastGroup
-                                            ? `3px solid ${nodeLineColor}`
-                                            : 'none',
-                                        borderBottom: `3px solid ${nodeLineColor}`,
-                                        boxSizing: 'border-box',
-                                        padding: '2px',
-                                    }}
-                                >
-                                    {group.label}
-                                </TableCell>
-                            );
-                        })}
+                        {Object.values(senderGroups).map((group, idx) => (
+                            <TableCell
+                                key={idx}
+                                align="center"
+                                colSpan={group.count}
+                                style={{
+                                    backgroundColor: primaryColor,
+                                    color: '#fff',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.7rem',
+                                    borderLeft: `3px solid ${nodeLineColor}`,
+                                    borderBottom: `3px solid ${nodeLineColor}`,
+                                    boxSizing: 'border-box',
+                                }}
+                            >
+                                {group.label}
+                            </TableCell>
+                        ))}
                     </TableRow>
 
-                    {/* RIGA 2: LABEL SINGOLI SENDER */}
+                    {/* RIGA 2: SENDER LABELS */}
                     <TableRow style={{ height: 120 }}>
                         <TableCell
                             colSpan={2}
@@ -154,53 +145,50 @@ const MatrixBase = ({
                         >
                             Destinazioni
                         </TableCell>
-                        {senders.map((sender, idx) => {
-                            const firstOfNode = isFirstInGroup(
-                                idx,
-                                senders,
-                                'device_id'
-                            );
-                            const lastOfNode = isLastInGroup(
-                                idx,
-                                senders,
-                                'device_id'
-                            );
-
-                            return (
-                                <TableCell
-                                    key={sender.id}
-                                    align="center"
+                        {senders.map((sender, idx) => (
+                            <TableCell
+                                key={sender.id}
+                                align="center"
+                                style={{
+                                    backgroundColor:
+                                        hoveredCol === idx
+                                            ? `${primaryColor}15`
+                                            : lightBg, // Evidenzia testata se colonna hovered
+                                    borderBottom: `3px solid ${nodeLineColor}`,
+                                    borderLeft: isFirstInGroup(
+                                        idx,
+                                        senders,
+                                        'device_id'
+                                    )
+                                        ? `3px solid ${nodeLineColor}`
+                                        : 'none',
+                                    borderRight: isLastInGroup(
+                                        idx,
+                                        senders,
+                                        'device_id'
+                                    )
+                                        ? `3px solid ${nodeLineColor}`
+                                        : `1px solid ${gridLineColor}`,
+                                    top: cellSize,
+                                    zIndex: 10,
+                                    width: cellSize,
+                                    boxSizing: 'border-box',
+                                    transition: 'background-color 0.2s',
+                                }}
+                            >
+                                <div
                                     style={{
-                                        backgroundColor: lightBg,
-                                        borderBottom: `3px solid ${nodeLineColor}`,
-                                        borderLeft: firstOfNode
-                                            ? `3px solid ${nodeLineColor}`
-                                            : 'none',
-                                        borderRight: lastOfNode
-                                            ? `3px solid ${nodeLineColor}`
-                                            : `1px solid ${gridLineColor}`,
-                                        padding: '5px 0',
-                                        top: cellSize,
-                                        zIndex: 10,
-                                        width: cellSize,
-                                        minWidth: cellSize,
-                                        boxSizing: 'border-box',
+                                        writingMode: 'vertical-rl',
+                                        transform: 'rotate(180deg)',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        margin: 'auto',
                                     }}
                                 >
-                                    <div
-                                        style={{
-                                            writingMode: 'vertical-rl',
-                                            transform: 'rotate(180deg)',
-                                            fontSize: '0.65rem',
-                                            fontWeight: 700,
-                                            margin: 'auto',
-                                        }}
-                                    >
-                                        {sender.label}
-                                    </div>
-                                </TableCell>
-                            );
-                        })}
+                                    {sender.label}
+                                </div>
+                            </TableCell>
+                        ))}
                     </TableRow>
                 </TableHead>
 
@@ -217,7 +205,13 @@ const MatrixBase = ({
                         return (
                             <TableRow
                                 key={receiver.id}
-                                style={{ height: cellSize }}
+                                style={{
+                                    height: cellSize,
+                                    backgroundColor:
+                                        hoveredRow === rIdx
+                                            ? crosshairColor
+                                            : 'transparent', // Evidenzia riga
+                                }}
                             >
                                 {isFirstR && (
                                     <TableCell
@@ -225,9 +219,7 @@ const MatrixBase = ({
                                         style={{
                                             backgroundColor: primaryColor,
                                             color: '#fff',
-                                            fontWeight: 'bold',
                                             textAlign: 'center',
-                                            padding: '4px',
                                             width: cellSize,
                                             borderBottom: `3px solid ${nodeLineColor}`,
                                             borderRight: `3px solid ${nodeLineColor}`,
@@ -241,6 +233,7 @@ const MatrixBase = ({
                                                 writingMode: 'vertical-rl',
                                                 transform: 'rotate(180deg)',
                                                 fontSize: '0.65rem',
+                                                fontWeight: 'bold',
                                             }}
                                         >
                                             {rGroup.label}
@@ -250,20 +243,19 @@ const MatrixBase = ({
 
                                 <TableCell
                                     style={{
-                                        backgroundColor: '#f5f5f5',
+                                        backgroundColor:
+                                            hoveredRow === rIdx
+                                                ? `${primaryColor}22`
+                                                : '#f5f5f5', // Evidenzia label receiver
                                         borderRight: `3px solid ${nodeLineColor}`,
                                         borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
-                                        padding: '0 8px',
                                         position: 'sticky',
                                         left: cellSize,
                                         zIndex: 5,
                                         width: 160,
                                         boxSizing: 'border-box',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
                                     }}
                                 >
                                     <Typography
@@ -296,6 +288,10 @@ const MatrixBase = ({
                                         <TableCell
                                             key={`${receiver.id}-${sender.id}`}
                                             align="center"
+                                            onMouseEnter={() => {
+                                                setHoveredRow(rIdx);
+                                                setHoveredCol(sIdx);
+                                            }}
                                             onClick={() =>
                                                 onConnect(
                                                     receiver,
@@ -305,9 +301,13 @@ const MatrixBase = ({
                                             }
                                             style={{
                                                 cursor: 'pointer',
+                                                // Logica Mirino: se riga o colonna corrispondono, colora la cella
                                                 backgroundColor: isConnected
-                                                    ? `${activeGreen}11`
-                                                    : 'transparent',
+                                                    ? `${activeGreen}22`
+                                                    : hoveredRow === rIdx ||
+                                                        hoveredCol === sIdx
+                                                      ? crosshairColor
+                                                      : 'transparent',
                                                 borderLeft: isFirstSNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : 'none',
@@ -318,9 +318,9 @@ const MatrixBase = ({
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
                                                 width: cellSize,
-                                                height: cellSize,
-                                                padding: 0,
                                                 boxSizing: 'border-box',
+                                                transition:
+                                                    'background-color 0.1s',
                                             }}
                                         >
                                             {isConnected ? (
@@ -335,7 +335,12 @@ const MatrixBase = ({
                                             ) : (
                                                 <span
                                                     style={{
-                                                        color: '#eee',
+                                                        color:
+                                                            hoveredRow ===
+                                                                rIdx ||
+                                                            hoveredCol === sIdx
+                                                                ? '#bbb'
+                                                                : '#eee',
                                                         fontSize: '1rem',
                                                     }}
                                                 >
