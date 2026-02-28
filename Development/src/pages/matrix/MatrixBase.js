@@ -29,6 +29,11 @@ const MatrixBase = ({
         return array[currentIdx][key] !== array[currentIdx + 1][key];
     };
 
+    const isFirstInGroup = (currentIdx, array, key) => {
+        if (currentIdx === 0) return true;
+        return array[currentIdx][key] !== array[currentIdx - 1][key];
+    };
+
     const senderGroups = senders.reduce((acc, s) => {
         const devId = s.device_id;
         if (!acc[devId])
@@ -59,35 +64,40 @@ const MatrixBase = ({
                 backgroundColor: '#fff',
                 boxShadow: 'none',
                 height: '100%',
+                // Scrollbar personalizzata per un look più moderno
+                scrollbarWidth: 'thin',
+                scrollbarColor: `${primaryColor} #f0f0f0`,
             }}
         >
             <Table
                 size="small"
                 stickyHeader
-                style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+                style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}
             >
                 <TableHead>
                     <TableRow>
+                        {/* Spazio vuoto in alto a sinistra */}
                         <TableCell
                             style={{
                                 backgroundColor: lightBg,
                                 borderBottom: `3px solid ${nodeLineColor}`,
-                                zIndex: 10,
+                                width: 40,
                                 position: 'sticky',
                                 left: 0,
-                                top: 0,
+                                zIndex: 20,
                             }}
                         />
                         <TableCell
                             style={{
                                 backgroundColor: lightBg,
                                 borderBottom: `3px solid ${nodeLineColor}`,
-                                zIndex: 10,
+                                width: 160,
                                 position: 'sticky',
                                 left: 40,
-                                top: 0,
+                                zIndex: 20,
                             }}
                         />
+
                         {Object.values(senderGroups).map((group, idx) => (
                             <TableCell
                                 key={idx}
@@ -97,10 +107,11 @@ const MatrixBase = ({
                                     backgroundColor: primaryColor,
                                     color: '#fff',
                                     fontWeight: 'bold',
+                                    padding: '8px',
+                                    fontSize: '0.8rem',
+                                    // Fix allineamento: il bordo sinistro deve esserci solo se non è il primo o deve matchare quello sotto
                                     borderLeft: `3px solid ${nodeLineColor}`,
                                     borderBottom: `3px solid ${nodeLineColor}`,
-                                    padding: '6px',
-                                    fontSize: '0.75rem',
                                     boxSizing: 'border-box',
                                 }}
                             >
@@ -108,6 +119,7 @@ const MatrixBase = ({
                             </TableCell>
                         ))}
                     </TableRow>
+
                     <TableRow>
                         <TableCell
                             colSpan={2}
@@ -116,53 +128,70 @@ const MatrixBase = ({
                                 color: primaryColor,
                                 fontWeight: 'bold',
                                 borderBottom: `3px solid ${nodeLineColor}`,
+                                borderRight: `3px solid ${nodeLineColor}`,
                                 position: 'sticky',
                                 left: 0,
-                                top: 35,
-                                zIndex: 10,
+                                top: 37,
+                                zIndex: 20,
                             }}
                         >
                             Destinazioni
                         </TableCell>
-                        {senders.map((sender, idx) => (
-                            <TableCell
-                                key={sender.id}
-                                align="center"
-                                style={{
-                                    backgroundColor: lightBg,
-                                    borderBottom: `3px solid ${nodeLineColor}`,
-                                    borderRight: isLastInGroup(
-                                        idx,
-                                        senders,
-                                        'device_id'
-                                    )
-                                        ? `3px solid ${nodeLineColor}`
-                                        : `1px solid ${gridLineColor}`,
-                                    padding: '10px 5px',
-                                    top: 35,
-                                    zIndex: 5,
-                                }}
-                            >
-                                <div
+                        {senders.map((sender, idx) => {
+                            const firstOfNode = isFirstInGroup(
+                                idx,
+                                senders,
+                                'device_id'
+                            );
+                            const lastOfNode = isLastInGroup(
+                                idx,
+                                senders,
+                                'device_id'
+                            );
+
+                            return (
+                                <TableCell
+                                    key={sender.id}
+                                    align="center"
                                     style={{
-                                        writingMode: 'vertical-rl',
-                                        transform: 'rotate(180deg)',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 700,
+                                        backgroundColor: lightBg,
+                                        borderBottom: `3px solid ${nodeLineColor}`,
+                                        // Applichiamo il bordo spesso a sinistra solo se è il primo elemento del nodo
+                                        borderLeft: firstOfNode
+                                            ? `3px solid ${nodeLineColor}`
+                                            : 'none',
+                                        borderRight: lastOfNode
+                                            ? `3px solid ${nodeLineColor}`
+                                            : `1px solid ${gridLineColor}`,
+                                        padding: '10px 5px',
+                                        top: 37,
+                                        zIndex: 10,
+                                        width: 60,
+                                        boxSizing: 'border-box',
                                     }}
                                 >
-                                    {sender.label}
-                                </div>
-                            </TableCell>
-                        ))}
+                                    <div
+                                        style={{
+                                            writingMode: 'vertical-rl',
+                                            transform: 'rotate(180deg)',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {sender.label}
+                                    </div>
+                                </TableCell>
+                            );
+                        })}
                     </TableRow>
                 </TableHead>
 
                 <TableBody>
                     {receivers.map((receiver, rIdx) => {
-                        const group = receiverGroups[receiver.device_id];
-                        const isFirstInGroup = group.firstId === receiver.id;
-                        const isLastNodeRow = isLastInGroup(
+                        const rGroup = receiverGroups[receiver.device_id];
+                        const isFirstR = rGroup.firstId === receiver.id;
+                        const isLastRNode = isLastInGroup(
                             rIdx,
                             receivers,
                             'device_id'
@@ -170,9 +199,9 @@ const MatrixBase = ({
 
                         return (
                             <TableRow key={receiver.id}>
-                                {isFirstInGroup && (
+                                {isFirstR && (
                                     <TableCell
-                                        rowSpan={group.count}
+                                        rowSpan={rGroup.count}
                                         style={{
                                             backgroundColor: primaryColor,
                                             color: '#fff',
@@ -181,20 +210,20 @@ const MatrixBase = ({
                                             padding: '8px 4px',
                                             width: 40,
                                             borderBottom: `3px solid ${nodeLineColor}`,
-                                            borderRight: `1px solid ${nodeLineColor}`,
+                                            borderRight: `3px solid ${nodeLineColor}`,
                                             position: 'sticky',
                                             left: 0,
-                                            zIndex: 2,
+                                            zIndex: 5,
                                         }}
                                     >
                                         <div
                                             style={{
                                                 writingMode: 'vertical-rl',
                                                 transform: 'rotate(180deg)',
-                                                fontSize: '0.75rem',
+                                                fontSize: '0.7rem',
                                             }}
                                         >
-                                            {group.label}
+                                            {rGroup.label}
                                         </div>
                                     </TableCell>
                                 )}
@@ -203,13 +232,14 @@ const MatrixBase = ({
                                     style={{
                                         backgroundColor: '#f5f5f5',
                                         borderRight: `3px solid ${nodeLineColor}`,
-                                        borderBottom: isLastNodeRow
+                                        borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
                                         padding: '8px',
                                         position: 'sticky',
                                         left: 40,
-                                        zIndex: 2,
+                                        zIndex: 5,
+                                        boxSizing: 'border-box',
                                     }}
                                 >
                                     <Typography
@@ -226,7 +256,12 @@ const MatrixBase = ({
                                 {senders.map((sender, sIdx) => {
                                     const isConnected =
                                         connections[receiver.id] === sender.id;
-                                    const isLastNodeCol = isLastInGroup(
+                                    const isFirstSNode = isFirstInGroup(
+                                        sIdx,
+                                        senders,
+                                        'device_id'
+                                    );
+                                    const isLastSNode = isLastInGroup(
                                         sIdx,
                                         senders,
                                         'device_id'
@@ -248,16 +283,20 @@ const MatrixBase = ({
                                                 backgroundColor: isConnected
                                                     ? `${primaryColor}22`
                                                     : 'transparent',
-                                                borderBottom: isLastNodeRow
+                                                borderLeft: isFirstSNode
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : 'none',
+                                                borderRight: isLastSNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
-                                                borderRight: isLastNodeCol
+                                                borderBottom: isLastRNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
                                                 fontSize: '1.2rem',
                                                 color: isConnected
                                                     ? primaryColor
                                                     : '#ccc',
+                                                boxSizing: 'border-box',
                                             }}
                                         >
                                             {isConnected ? '●' : '○'}
