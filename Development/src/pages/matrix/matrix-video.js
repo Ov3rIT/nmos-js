@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from '@material-ui/core';
+import { Box, Typography } from '@material-ui/core';
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotify, useRefresh } from 'react-admin';
 import cloneDeep from 'lodash/cloneDeep';
@@ -10,6 +10,72 @@ import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 import dataProvider from '../../dataProvider';
 import { checkCompatibility } from './nmosCompatibility';
+
+const TogglePill = ({ label, checked, onChange, colorOn = '#027065' }) => {
+    return (
+        <div
+            role="switch"
+            aria-checked={checked}
+            tabIndex={0}
+            onClick={onChange}
+            onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onChange();
+                }
+            }}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '6px 10px',
+                borderRadius: 999,
+                userSelect: 'none',
+                cursor: 'pointer',
+                border: '1px solid rgba(0,0,0,0.15)',
+                backgroundColor: checked ? `${colorOn}12` : 'rgba(0,0,0,0.03)',
+            }}
+            title={`${label}: ${checked ? 'ON' : 'OFF'}`}
+        >
+            <span
+                style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: 0.2,
+                    color: 'rgba(0,0,0,0.75)',
+                }}
+            >
+                {label}
+            </span>
+
+            <span
+                style={{
+                    width: 34,
+                    height: 18,
+                    borderRadius: 999,
+                    position: 'relative',
+                    backgroundColor: checked ? colorOn : 'rgba(0,0,0,0.18)',
+                    transition: 'background-color 120ms linear',
+                    flex: '0 0 auto',
+                }}
+            >
+                <span
+                    style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 999,
+                        backgroundColor: '#fff',
+                        position: 'absolute',
+                        top: 2,
+                        left: checked ? 18 : 2,
+                        transition: 'left 120ms linear',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                    }}
+                />
+            </span>
+        </div>
+    );
+};
 
 const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext);
@@ -139,10 +205,6 @@ const MatrixVideo = ({ data }) => {
      * Disconnect vendor-agnostico:
      * - stage sender_id=null
      * - activation immediate
-     *
-     * NB: non forzo master_enable=false per evitare comportamenti vendor-specific
-     * (alcuni receiver non gradiscono master_enable=false).
-     * Se vuoi, lo rendiamo opzionale.
      */
     const disconnectReceiver = async receiverId => {
         const { data: receiver } = await dataProvider('GET_ONE', 'receivers', {
@@ -161,24 +223,16 @@ const MatrixVideo = ({ data }) => {
         });
     };
 
-    /**
-     * Click matrice:
-     * - se shouldConnect=true: check compatibilità -> makeConnection active
-     * - se shouldConnect=false: disconnect receiver (clear sender_id) + activate
-     */
     const handleConnect = async (receiver, sender, shouldConnect) => {
         try {
             if (!shouldConnect) {
                 await disconnectReceiver(receiver.id);
-
-                // aggiorna subito icona per quel receiver
                 setConnections(prev => ({ ...prev, [receiver.id]: null }));
                 notify('⛔ Disconnesso', 'info');
                 refresh();
                 return;
             }
 
-            // 1) check compatibilità prima della connect
             const { ok, reason } = checkCompatibility(
                 sender,
                 receiver,
@@ -189,13 +243,11 @@ const MatrixVideo = ({ data }) => {
                 return;
             }
 
-            // 2) connect/activate via pipeline nmos-js
             await makeConnection(sender.id, receiver.id, 'active');
             notify('✅ Connessione attivata', 'info');
 
             refresh();
 
-            // 3) rilegge $active del receiver per icona accurata
             try {
                 const resp = await dataProvider('GET_ONE', 'receivers', {
                     id: receiver.id,
@@ -228,24 +280,47 @@ const MatrixVideo = ({ data }) => {
                 justifyContent="space-between"
                 mb={2}
             >
-                <Box>
-                    {['Video', 'Audio', 'Anc'].map(cat => (
-                        <Button
-                            key={cat}
-                            variant={
-                                activeFilters[cat] ? 'contained' : 'outlined'
-                            }
-                            style={{ marginRight: 8 }}
-                            onClick={() =>
-                                setActiveFilters(prev => ({
-                                    ...prev,
-                                    [cat]: !prev[cat],
-                                }))
-                            }
-                        >
-                            {cat}
-                        </Button>
-                    ))}
+                <Typography
+                    variant="h6"
+                    style={{ color: theme?.palette?.text?.primary }}
+                >
+                    NMOS MATRIX CONTROL
+                </Typography>
+
+                <Box style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <TogglePill
+                        label="VIDEO"
+                        checked={!!activeFilters.Video}
+                        onChange={() =>
+                            setActiveFilters(prev => ({
+                                ...prev,
+                                Video: !prev.Video,
+                            }))
+                        }
+                        colorOn={primaryColor}
+                    />
+                    <TogglePill
+                        label="AUDIO"
+                        checked={!!activeFilters.Audio}
+                        onChange={() =>
+                            setActiveFilters(prev => ({
+                                ...prev,
+                                Audio: !prev.Audio,
+                            }))
+                        }
+                        colorOn={primaryColor}
+                    />
+                    <TogglePill
+                        label="ANC"
+                        checked={!!activeFilters.Anc}
+                        onChange={() =>
+                            setActiveFilters(prev => ({
+                                ...prev,
+                                Anc: !prev.Anc,
+                            }))
+                        }
+                        colorOn={primaryColor}
+                    />
                 </Box>
             </Box>
 
