@@ -304,9 +304,9 @@ const MatrixBase = ({
                                                 ? theme.palette.action.hover
                                                 : surfaceBg,
 
-                                        borderRight: `3px solid ${nodeLineColor}`,
+                                        borderRight: `1px solid ${nodeLineColor}`,
                                         borderBottom: isLastRNode
-                                            ? `3px solid ${nodeLineColor}`
+                                            ? `1px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
 
                                         position: 'sticky',
@@ -368,15 +368,15 @@ const MatrixBase = ({
                                                       : 'transparent',
 
                                                 borderLeft: isFirstSNode
-                                                    ? `3px solid ${nodeLineColor}`
+                                                    ? `1px solid ${nodeLineColor}`
                                                     : 'none',
 
                                                 borderRight: isLastSNode
-                                                    ? `3px solid ${nodeLineColor}`
+                                                    ? `1px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
 
                                                 borderBottom: isLastRNode
-                                                    ? `3px solid ${nodeLineColor}`
+                                                    ? `1px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
 
                                                 width: cellSize,
