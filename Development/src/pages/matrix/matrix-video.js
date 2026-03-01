@@ -275,53 +275,47 @@ const MatrixVideo = ({ data }) => {
     return (
         <Box>
             <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                mb={2}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    gap: 16,
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                }}
             >
-                <Typography
-                    variant="h6"
-                    style={{ color: theme?.palette?.text?.primary }}
-                >
-                    NMOS MATRIX CONTROL
-                </Typography>
+                <TogglePill
+                    label="VIDEO"
+                    checked={!!activeFilters.Video}
+                    onChange={() =>
+                        setActiveFilters(prev => ({
+                            ...prev,
+                            Video: !prev.Video,
+                        }))
+                    }
+                    colorOn={primaryColor}
+                />
 
-                <Box style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <TogglePill
-                        label="VIDEO"
-                        checked={!!activeFilters.Video}
-                        onChange={() =>
-                            setActiveFilters(prev => ({
-                                ...prev,
-                                Video: !prev.Video,
-                            }))
-                        }
-                        colorOn={primaryColor}
-                    />
-                    <TogglePill
-                        label="AUDIO"
-                        checked={!!activeFilters.Audio}
-                        onChange={() =>
-                            setActiveFilters(prev => ({
-                                ...prev,
-                                Audio: !prev.Audio,
-                            }))
-                        }
-                        colorOn={primaryColor}
-                    />
-                    <TogglePill
-                        label="ANC"
-                        checked={!!activeFilters.Anc}
-                        onChange={() =>
-                            setActiveFilters(prev => ({
-                                ...prev,
-                                Anc: !prev.Anc,
-                            }))
-                        }
-                        colorOn={primaryColor}
-                    />
-                </Box>
+                <TogglePill
+                    label="AUDIO"
+                    checked={!!activeFilters.Audio}
+                    onChange={() =>
+                        setActiveFilters(prev => ({
+                            ...prev,
+                            Audio: !prev.Audio,
+                        }))
+                    }
+                    colorOn={primaryColor}
+                />
+
+                <TogglePill
+                    label="ANC"
+                    checked={!!activeFilters.Anc}
+                    onChange={() =>
+                        setActiveFilters(prev => ({ ...prev, Anc: !prev.Anc }))
+                    }
+                    colorOn={primaryColor}
+                />
             </Box>
 
             <MatrixBase
