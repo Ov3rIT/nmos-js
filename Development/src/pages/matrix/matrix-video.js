@@ -1,12 +1,12 @@
 import {
     Box,
     Button,
-    Typography,
     Dialog,
     DialogTitle,
     DialogContent,
     DialogContentText,
     DialogActions,
+    Typography,
 } from '@material-ui/core';
 import React, { useContext, useMemo, useState } from 'react';
 import { useNotify, useRefresh } from 'react-admin';
