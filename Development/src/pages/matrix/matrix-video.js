@@ -10,7 +10,6 @@ import MatrixBase from './MatrixBase';
 import makeConnection from '../../components/makeConnection';
 import dataProvider from '../../dataProvider';
 import { checkCompatibility } from './nmosCompatibility';
-import MatrixBase from './MatrixBase';
 
 const TogglePill = ({ label, checked, onChange, colorOn = '#027065' }) => {
     return (
