@@ -156,6 +156,7 @@ const MatrixBase = ({
                         >
                             Destinazioni
                         </TableCell>
+
                         {senders.map((sender, idx) => (
                             <TableCell
                                 key={sender.id}
@@ -180,7 +181,11 @@ const MatrixBase = ({
                                     )
                                         ? `3px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
+
+                                    // ✅ FIX: sticky anche per la seconda riga header
+                                    position: 'sticky',
                                     top: cellSize,
+
                                     zIndex: 10,
                                     width: cellSize,
                                     minWidth: cellSize,
