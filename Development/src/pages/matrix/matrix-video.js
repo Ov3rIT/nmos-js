@@ -5,11 +5,12 @@ import cloneDeep from 'lodash/cloneDeep';
 import set from 'lodash/set';
 
 import { ThemeContext } from '../../theme/ThemeContext';
-import MatrixPro from './MatrixPro';
+import MatrixBase from './MatrixBase';
 
 import makeConnection from '../../components/makeConnection';
 import dataProvider from '../../dataProvider';
 import { checkCompatibility } from './nmosCompatibility';
+import MatrixBase from './MatrixBase';
 
 const TogglePill = ({ label, checked, onChange, colorOn = '#027065' }) => {
     return (
@@ -321,7 +322,7 @@ const MatrixVideo = ({ data }) => {
 
             {/* Area scrollabile: la tabella scrolla qui dentro, non la pagina */}
             <Box style={{ flex: '1 1 auto', minHeight: 0 }}>
-                <MatrixPro
+                <MatrixBase
                     senders={processed.senders}
                     receivers={processed.receivers}
                     devices={processed.devices}
