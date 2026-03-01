@@ -148,9 +148,9 @@ const MatrixBase = ({
                                         fontSize: '0.72rem',
                                         letterSpacing: 0.5,
 
-                                        borderLeft: `3px solid ${nodeLineColor}`,
+                                        borderLeft: `1px solid ${nodeLineColor}`,
                                         borderRight: isLast
-                                            ? `3px solid ${nodeLineColor}`
+                                            ? `1px solid ${nodeLineColor}`
                                             : 'none',
 
                                         boxShadow: `
@@ -178,7 +178,7 @@ const MatrixBase = ({
                                 backgroundColor: headerBg,
                                 color: primary,
                                 fontWeight: 'bold',
-                                borderRight: `3px solid ${nodeLineColor}`,
+                                borderRight: `1px solid ${nodeLineColor}`,
                                 position: 'sticky',
                                 left: 0,
                                 top: cellSize,
@@ -202,7 +202,7 @@ const MatrixBase = ({
                                         senders,
                                         'device_id'
                                     )
-                                        ? `3px solid ${nodeLineColor}`
+                                        ? `1px solid ${nodeLineColor}`
                                         : 'none',
 
                                     borderRight: isLastInGroup(
@@ -210,7 +210,7 @@ const MatrixBase = ({
                                         senders,
                                         'device_id'
                                     )
-                                        ? `3px solid ${nodeLineColor}`
+                                        ? `1px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
 
                                     boxShadow: `inset -1px 0 0 ${gridLineColor}`,
@@ -273,8 +273,8 @@ const MatrixBase = ({
                                         style={{
                                             backgroundColor: primary,
                                             color: headerText,
-                                            borderBottom: `3px solid ${nodeLineColor}`,
-                                            borderRight: `3px solid ${nodeLineColor}`,
+                                            borderBottom: `1px solid ${nodeLineColor}`,
+                                            borderRight: `1px solid ${nodeLineColor}`,
                                             position: 'sticky',
                                             left: 0,
                                             zIndex: 10,
