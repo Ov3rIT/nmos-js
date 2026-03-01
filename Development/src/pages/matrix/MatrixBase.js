@@ -26,7 +26,6 @@ const MatrixBase = ({
 
     const redirect = useRedirect();
 
-    // COSTANTE RIGIDA: Se vuoi celle più grandi o piccole, cambia solo questo numero
     const cellSize = 50;
 
     const gridLineColor = '#ddd';
@@ -122,7 +121,6 @@ const MatrixBase = ({
                                     }}
                                 >
                                     <div
-                                        // ✅ CLICK SU LABEL SENDER -> /#/senders/{id}
                                         onClick={e => {
                                             e.stopPropagation();
                                             redirect(`/senders/${sender.id}`);
@@ -138,8 +136,9 @@ const MatrixBase = ({
                                             fontSize: 11,
                                             fontWeight: 600,
                                             color: primaryColor,
+                                            cursor: 'pointer',
                                         }}
-                                        title={sender.label}
+                                        title={`Vai al sender ${sender.label}`}
                                     >
                                         {sender.label}
                                     </div>
@@ -147,7 +146,6 @@ const MatrixBase = ({
                             ))}
                         </TableRow>
 
-                        {/* Row con i gruppi dei sender (device) */}
                         <TableRow>
                             <TableCell
                                 style={{
@@ -189,13 +187,6 @@ const MatrixBase = ({
                             return (
                                 <TableRow key={receiver.id}>
                                     <TableCell
-                                        // ✅ CLICK SU LABEL RECEIVER -> /#/receivers/{id}
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            redirect(
-                                                `/receivers/${receiver.id}`
-                                            );
-                                        }}
                                         style={{
                                             width: 240,
                                             minWidth: 240,
@@ -203,8 +194,15 @@ const MatrixBase = ({
                                             borderBottom: isLastRNode
                                                 ? `3px solid ${nodeLineColor}`
                                                 : `1px solid ${gridLineColor}`,
+                                            cursor: 'pointer',
                                         }}
-                                        title={receiver.label}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            redirect(
+                                                `/receivers/${receiver.id}`
+                                            );
+                                        }}
+                                        title={`Vai al receiver ${receiver.label}`}
                                     >
                                         {isFirstR && (
                                             <Typography
