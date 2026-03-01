@@ -1,10 +1,9 @@
-// Development/src/pages/matrix/matrix-video.js
-import { Box, Typography } from '@material-ui/core';
-import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { useNotify, useRefresh } from 'react-admin';
+import { Box, Button, Typography } from '@material-ui/core';
+import React, { useContext, useMemo, useState } from 'react';
+import { useConfirm, useNotify, useRefresh } from 'react-admin';
+import cloneDeep from 'lodash/cloneDeep';
 import get from 'lodash/get';
 import set from 'lodash/set';
-import cloneDeep from 'lodash/cloneDeep';
 
 import { ThemeContext } from '../../theme/ThemeContext';
 import MatrixBase from './MatrixBase';
@@ -16,6 +15,7 @@ const MatrixVideo = ({ data }) => {
     const { theme } = useContext(ThemeContext);
     const notify = useNotify();
     const refresh = useRefresh();
+    const confirm = useConfirm();
 
     const [activeFilters, setActiveFilters] = useState({
         Video: true,
@@ -23,14 +23,18 @@ const MatrixVideo = ({ data }) => {
         Anc: true,
     });
 
-    // receiverId -> senderId (attuale, idealmente letto da $active)
+    // receiverId -> senderId
     const [connections, setConnections] = useState({});
+
+    const primaryColor = 'rgb(2, 112, 101)';
+    const lightBg = 'rgb(245, 252, 251)';
 
     const processed = useMemo(() => {
         const normalize = items =>
             Array.isArray(items) ? items : Object.values(items || {});
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
+
         const getCategory = item => {
             const fmt = (item.format || '').toLowerCase();
             const label = (item.label || '').toLowerCase();
@@ -67,56 +71,42 @@ const MatrixVideo = ({ data }) => {
     }, [data, activeFilters]);
 
     /**
-     * (Opzionale ma consigliato)
-     * Popola connections leggendo $active.sender_id dai receiver via GET_ONE,
-     * così la matrice riflette lo stato reale dei device.
+     * Abilita un sender via IS-05 se serve (master_enable=false).
+     * - mostra un confirm pop-up
+     * - se confermato: UPDATE senders con staged.master_enable=true + activate_immediate
      */
-    useEffect(() => {
-        let cancelled = false;
+    const enableSenderIfNeeded = async (senderId, senderLabel) => {
+        const { data: sender } = await dataProvider('GET_ONE', 'senders', {
+            id: senderId,
+        });
 
-        const loadActiveConnections = async () => {
-            try {
-                const rcvs = processed.receivers || [];
-                const results = await Promise.all(
-                    rcvs.map(r =>
-                        dataProvider('GET_ONE', 'receivers', { id: r.id })
-                            .then(resp => ({
-                                id: r.id,
-                                senderId: get(
-                                    resp,
-                                    'data.$active.sender_id',
-                                    null
-                                ),
-                            }))
-                            .catch(() => ({ id: r.id, senderId: null }))
-                    )
-                );
+        // Se il device non espone il campo, assumiamo "enabled"
+        const enabled = get(sender, '$active.master_enable');
+        if (enabled === undefined || enabled === true) return;
 
-                if (cancelled) return;
+        // Pop-up
+        await confirm({
+            title: 'Sender disabilitato',
+            content: `Il sender "${senderLabel || senderId}" risulta disabilitato (master_enable=false). Vuoi abilitarlo e procedere con la connessione?`,
+        });
 
-                const map = {};
-                results.forEach(x => {
-                    map[x.id] = x.senderId;
-                });
-                setConnections(map);
-            } catch (e) {
-                // non bloccare la UI se qualche device non risponde
-                console.warn(
-                    'Impossibile leggere $active per tutti i receiver:',
-                    e
-                );
-            }
-        };
+        const patchData = cloneDeep(sender);
+        set(patchData, '$staged.master_enable', true);
+        set(patchData, '$staged.activation.mode', 'activate_immediate');
+        set(patchData, '$staged.activation.requested_time', null);
 
-        loadActiveConnections();
-        return () => {
-            cancelled = true;
-        };
-    }, [processed.receivers]);
+        await dataProvider('UPDATE', 'senders', {
+            id: senderId,
+            data: patchData,
+            previousData: sender,
+        });
+
+        notify('✅ Sender abilitato', 'info');
+    };
 
     /**
-     * Disconnect: stage sender_id=null + activation immediate
-     * (mini helper, simile alla logica di makeConnection ma per “clear”)
+     * Disconnect (vendor-agnostico):
+     * stage sender_id=null + master_enable=false + activation immediate
      */
     const disconnectReceiver = async receiverId => {
         const { data: receiver } = await dataProvider('GET_ONE', 'receivers', {
@@ -127,6 +117,7 @@ const MatrixVideo = ({ data }) => {
         set(patchData, '$staged.sender_id', null);
         set(patchData, '$staged.master_enable', false);
         set(patchData, '$staged.activation.mode', 'activate_immediate');
+        set(patchData, '$staged.activation.requested_time', null);
 
         await dataProvider('UPDATE', 'receivers', {
             id: receiverId,
@@ -136,14 +127,29 @@ const MatrixVideo = ({ data }) => {
     };
 
     /**
-     * Click su cella matrice: connect/disconnect
-     * Usa makeConnection (che fa staging + transport_params + SDP se disponibile)
+     * Click matrice:
+     * - se connect:
+     *   - prova makeConnection(...,'active')
+     *   - se fallisce perché sender non enabled => popup => abilita => retry
+     * - se disconnect: staged clear + activate
      */
     const handleConnect = async (receiver, sender, shouldConnect) => {
         try {
             if (shouldConnect) {
-                // endpoint 'active' => stage + activation immediate (come pulsante "Activate")
-                await makeConnection(sender.id, receiver.id, 'active');
+                try {
+                    await makeConnection(sender.id, receiver.id, 'active');
+                } catch (err) {
+                    const msg = String(err?.message || err);
+
+                    // makeConnection rifiuta se endpoint=active e sender non enabled
+                    if (msg.toLowerCase().includes('sender is not enabled')) {
+                        await enableSenderIfNeeded(sender.id, sender.label);
+                        await makeConnection(sender.id, receiver.id, 'active'); // retry dopo enable
+                    } else {
+                        throw err;
+                    }
+                }
+
                 setConnections(prev => ({ ...prev, [receiver.id]: sender.id }));
                 notify('✅ Connessione attivata', 'info');
             } else {
@@ -152,9 +158,19 @@ const MatrixVideo = ({ data }) => {
                 notify('⛔ Disconnesso', 'info');
             }
 
-            refresh(); // riallinea i dati react-admin
+            refresh();
         } catch (error) {
-            // stesso stile error handling di ConnectButtons
+            // Se l'utente annulla il confirm, react-admin lancia un errore: non trattarlo come failure
+            const msg = String(error?.message || error);
+            if (
+                msg.toLowerCase().includes('cancel') ||
+                msg.toLowerCase().includes('canceled')
+            ) {
+                notify('Operazione annullata', 'info');
+                return;
+            }
+
+            // Stile error handling “nmos-js”: se arriva body.error mostralo
             const body = error?.body;
             if (body?.error) {
                 notify(
@@ -162,9 +178,11 @@ const MatrixVideo = ({ data }) => {
                     'warning'
                 );
             } else {
-                notify(String(error), 'warning');
+                notify(msg, 'warning');
             }
-            console.error('Errore connect:', error);
+            // log utile
+            // eslint-disable-next-line no-console
+            console.error('❌ Errore connect:', error);
         }
     };
 
@@ -176,22 +194,30 @@ const MatrixVideo = ({ data }) => {
                 justifyContent="space-between"
                 mb={2}
             >
-                <Typography variant="h6">NMOS MATRIX CONTROL</Typography>
+                <Typography
+                    variant="h6"
+                    style={{ color: theme?.palette?.text?.primary }}
+                >
+                    NMOS MATRIX CONTROL
+                </Typography>
 
                 <Box>
                     {['Video', 'Audio', 'Anc'].map(cat => (
-                        <button
+                        <Button
                             key={cat}
+                            variant={
+                                activeFilters[cat] ? 'contained' : 'outlined'
+                            }
+                            style={{ marginRight: 8 }}
                             onClick={() =>
                                 setActiveFilters(prev => ({
                                     ...prev,
                                     [cat]: !prev[cat],
                                 }))
                             }
-                            style={{ marginRight: 8 }}
                         >
-                            {cat}: {activeFilters[cat] ? 'ON' : 'OFF'}
-                        </button>
+                            {cat}
+                        </Button>
                     ))}
                 </Box>
             </Box>
@@ -202,8 +228,8 @@ const MatrixVideo = ({ data }) => {
                 devices={processed.devices}
                 connections={connections}
                 onConnect={handleConnect}
-                primaryColor={'rgb(2, 112, 101)'}
-                lightBg={'rgb(245, 252, 251)'}
+                primaryColor={primaryColor}
+                lightBg={lightBg}
             />
         </Box>
     );
