@@ -102,12 +102,11 @@ const MatrixBase = ({
                 }}
             >
                 <TableHead>
-                    {/* ================= ROW 1 ================= */}
+                    {/* ================= ROW 1 - DEVICE GROUPS ================= */}
                     <TableRow style={{ height: cellSize }}>
                         <TableCell
                             style={{
                                 backgroundColor: headerBg,
-                                boxShadow: headerBottomLine,
                                 width: cellSize,
                                 position: 'sticky',
                                 top: 0,
@@ -118,7 +117,6 @@ const MatrixBase = ({
                         <TableCell
                             style={{
                                 backgroundColor: headerBg,
-                                boxShadow: headerBottomLine,
                                 width: 180,
                                 position: 'sticky',
                                 top: 0,
@@ -127,40 +125,52 @@ const MatrixBase = ({
                             }}
                         />
 
-                        {Object.values(senderGroups).map((group, idx) => (
-                            <TableCell
-                                key={idx}
-                                align="center"
-                                colSpan={group.count}
-                                style={{
-                                    backgroundColor: primary,
-                                    color: headerText,
-                                    fontWeight: 'bold',
-                                    fontSize: '0.7rem',
+                        {Object.values(senderGroups).map((group, idx, arr) => {
+                            const isLast = idx === arr.length - 1;
 
-                                    borderLeft: `3px solid ${nodeLineColor}`,
-                                    borderRight:
-                                        idx ===
-                                        Object.values(senderGroups).length - 1
+                            const headerBackground = isDark
+                                ? theme.palette.primary.dark
+                                : theme.palette.primary.main;
+
+                            const separatorColor = isDark
+                                ? 'rgba(255,255,255,0.25)'
+                                : 'rgba(255,255,255,0.6)';
+
+                            return (
+                                <TableCell
+                                    key={idx}
+                                    align="center"
+                                    colSpan={group.count}
+                                    style={{
+                                        backgroundColor: headerBackground,
+                                        color: headerText,
+                                        fontWeight: 600,
+                                        fontSize: '0.72rem',
+                                        letterSpacing: 0.5,
+
+                                        borderLeft: `3px solid ${nodeLineColor}`,
+                                        borderRight: isLast
                                             ? `3px solid ${nodeLineColor}`
                                             : 'none',
 
-                                    boxShadow: `
-                                        ${headerBottomLine},
-                                        inset 0 -1px 0 ${gridLineColor}
-                                    `,
+                                        boxShadow: `
+                                            ${headerBottomLine},
+                                            ${!isLast ? `inset -1px 0 0 ${separatorColor}` : ''},
+                                            inset 0 -6px 12px rgba(0,0,0,0.15)
+                                        `,
 
-                                    position: 'sticky',
-                                    top: 0,
-                                    zIndex: 90,
-                                }}
-                            >
-                                {group.label}
-                            </TableCell>
-                        ))}
+                                        position: 'sticky',
+                                        top: 0,
+                                        zIndex: 90,
+                                    }}
+                                >
+                                    {group.label}
+                                </TableCell>
+                            );
+                        })}
                     </TableRow>
 
-                    {/* ================= ROW 2 ================= */}
+                    {/* ================= ROW 2 - SENDERS ================= */}
                     <TableRow style={{ height: 140 }}>
                         <TableCell
                             colSpan={2}
@@ -168,10 +178,7 @@ const MatrixBase = ({
                                 backgroundColor: headerBg,
                                 color: primary,
                                 fontWeight: 'bold',
-
                                 borderRight: `3px solid ${nodeLineColor}`,
-                                boxShadow: headerBottomLine,
-
                                 position: 'sticky',
                                 left: 0,
                                 top: cellSize,
@@ -206,10 +213,7 @@ const MatrixBase = ({
                                         ? `3px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
 
-                                    boxShadow: `
-                                        ${headerBottomLine},
-                                        inset -1px 0 0 ${gridLineColor}
-                                    `,
+                                    boxShadow: `inset -1px 0 0 ${gridLineColor}`,
 
                                     position: 'sticky',
                                     top: cellSize,
@@ -269,10 +273,8 @@ const MatrixBase = ({
                                         style={{
                                             backgroundColor: primary,
                                             color: headerText,
-
                                             borderBottom: `3px solid ${nodeLineColor}`,
                                             borderRight: `3px solid ${nodeLineColor}`,
-
                                             position: 'sticky',
                                             left: 0,
                                             zIndex: 10,
