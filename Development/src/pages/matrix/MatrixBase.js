@@ -38,7 +38,6 @@ const MatrixBase = ({
 
     const isLastInGroup = (idx, arr, key) =>
         idx === arr.length - 1 || arr[idx][key] !== arr[idx + 1][key];
-
     const isFirstInGroup = (idx, arr, key) =>
         idx === 0 || arr[idx][key] !== arr[idx - 1][key];
 
@@ -52,19 +51,19 @@ const MatrixBase = ({
 
     const receiverGroups = receivers.reduce((acc, r) => {
         const devId = r.device_id;
-        if (!acc[devId]) {
+        if (!acc[devId])
             acc[devId] = {
                 label: getDeviceLabel(devId),
                 count: 0,
                 firstId: r.id,
             };
-        }
         acc[devId].count++;
         return acc;
     }, {});
 
     return (
-        <Paper
+        <TableContainer
+            component={Paper}
             onMouseLeave={() => {
                 setHoveredRow(null);
                 setHoveredCol(null);
@@ -76,217 +75,302 @@ const MatrixBase = ({
                 overflow: 'auto',
             }}
         >
-            <TableContainer>
-                <Table stickyHeader style={{ tableLayout: 'fixed' }}>
-                    <TableHead>
-                        <TableRow>
+            {/* TABLE-LAYOUT FIXED è fondamentale per i quadrati */}
+            <Table
+                size="small"
+                stickyHeader
+                style={{
+                    tableLayout: 'fixed',
+                    borderCollapse: 'collapse',
+                    width: 'max-content',
+                }}
+            >
+                <TableHead>
+                    <TableRow style={{ height: cellSize }}>
+                        <TableCell
+                            style={{
+                                backgroundColor: lightBg,
+                                borderBottom: `3px solid ${nodeLineColor}`,
+                                width: cellSize,
+                                position: 'sticky',
+                                left: 0,
+                                zIndex: 40,
+                            }}
+                        />
+                        <TableCell
+                            style={{
+                                backgroundColor: lightBg,
+                                borderBottom: `3px solid ${nodeLineColor}`,
+                                width: 180,
+                                position: 'sticky',
+                                left: cellSize,
+                                zIndex: 40,
+                            }}
+                        />
+                        {Object.values(senderGroups).map((group, idx) => (
                             <TableCell
+                                key={idx}
+                                align="center"
+                                colSpan={group.count}
                                 style={{
-                                    backgroundColor: lightBg,
+                                    backgroundColor: primaryColor,
+                                    color: '#fff',
                                     fontWeight: 'bold',
-                                    width: 240,
-                                    minWidth: 240,
-                                }}
-                            >
-                                <Typography variant="subtitle2">
-                                    Destinazioni
-                                </Typography>
-                            </TableCell>
-
-                            {senders.map((sender, idx) => (
-                                <TableCell
-                                    key={sender.id}
-                                    align="center"
-                                    style={{
-                                        backgroundColor: lightBg,
-                                        padding: 6,
-                                        width: cellSize,
-                                        minWidth: cellSize,
-                                        borderLeft: isFirstInGroup(
-                                            idx,
-                                            senders,
-                                            'device_id'
-                                        )
+                                    fontSize: '0.7rem',
+                                    borderLeft: `3px solid ${nodeLineColor}`,
+                                    borderBottom: `3px solid ${nodeLineColor}`,
+                                    borderRight:
+                                        idx ===
+                                        Object.values(senderGroups).length - 1
                                             ? `3px solid ${nodeLineColor}`
                                             : 'none',
-                                        borderRight: isLastInGroup(
-                                            idx,
-                                            senders,
-                                            'device_id'
-                                        )
+                                    height: cellSize,
+                                    boxSizing: 'border-box',
+                                    padding: '2px',
+                                }}
+                            >
+                                {group.label}
+                            </TableCell>
+                        ))}
+                    </TableRow>
+
+                    <TableRow style={{ height: 140 }}>
+                        {' '}
+                        {/* Altezza fissa per i nomi verticali */}
+                        <TableCell
+                            colSpan={2}
+                            style={{
+                                backgroundColor: lightBg,
+                                color: primaryColor,
+                                fontWeight: 'bold',
+                                borderBottom: `3px solid ${nodeLineColor}`,
+                                borderRight: `3px solid ${nodeLineColor}`,
+                                position: 'sticky',
+                                left: 0,
+                                top: cellSize,
+                                zIndex: 35,
+                                textAlign: 'center',
+                            }}
+                        >
+                            Destinazioni
+                        </TableCell>
+                        {senders.map((sender, idx) => (
+                            <TableCell
+                                key={sender.id}
+                                align="center"
+                                style={{
+                                    backgroundColor:
+                                        hoveredCol === idx
+                                            ? `${primaryColor}20`
+                                            : lightBg,
+                                    borderBottom: `3px solid ${nodeLineColor}`,
+                                    borderLeft: isFirstInGroup(
+                                        idx,
+                                        senders,
+                                        'device_id'
+                                    )
+                                        ? `3px solid ${nodeLineColor}`
+                                        : 'none',
+                                    borderRight: isLastInGroup(
+                                        idx,
+                                        senders,
+                                        'device_id'
+                                    )
+                                        ? `3px solid ${nodeLineColor}`
+                                        : `1px solid ${gridLineColor}`,
+                                    top: cellSize,
+                                    zIndex: 10,
+                                    width: cellSize,
+                                    minWidth: cellSize,
+                                    maxWidth: cellSize, // Forzatura larghezza
+                                    boxSizing: 'border-box',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        writingMode: 'vertical-rl',
+                                        transform: 'rotate(180deg)',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        margin: 'auto',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {sender.label}
+                                </div>
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                </TableHead>
+
+                <TableBody>
+                    {receivers.map((receiver, rIdx) => {
+                        const rGroup = receiverGroups[receiver.device_id];
+                        const isFirstR = rGroup.firstId === receiver.id;
+                        const isLastRNode = isLastInGroup(
+                            rIdx,
+                            receivers,
+                            'device_id'
+                        );
+
+                        return (
+                            <TableRow
+                                key={receiver.id}
+                                style={{
+                                    height: cellSize, // FORZA ALTEZZA RIGA
+                                    minHeight: cellSize,
+                                    maxHeight: cellSize,
+                                    backgroundColor:
+                                        hoveredRow === rIdx
+                                            ? crosshairColor
+                                            : 'transparent',
+                                }}
+                            >
+                                {isFirstR && (
+                                    <TableCell
+                                        rowSpan={rGroup.count}
+                                        style={{
+                                            backgroundColor: primaryColor,
+                                            color: '#fff',
+                                            textAlign: 'center',
+                                            width: cellSize,
+                                            minWidth: cellSize,
+                                            borderBottom: `3px solid ${nodeLineColor}`,
+                                            borderRight: `3px solid ${nodeLineColor}`,
+                                            position: 'sticky',
+                                            left: 0,
+                                            zIndex: 5,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                writingMode: 'vertical-rl',
+                                                transform: 'rotate(180deg)',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 'bold',
+                                            }}
+                                        >
+                                            {rGroup.label}
+                                        </div>
+                                    </TableCell>
+                                )}
+
+                                <TableCell
+                                    style={{
+                                        backgroundColor:
+                                            hoveredRow === rIdx
+                                                ? `${primaryColor}25`
+                                                : '#f5f5f5',
+                                        borderRight: `3px solid ${nodeLineColor}`,
+                                        borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
+                                        position: 'sticky',
+                                        left: cellSize,
+                                        zIndex: 5,
+                                        width: 180,
+                                        boxSizing: 'border-box',
                                     }}
                                 >
-                                    <div
+                                    <Typography
+                                        variant="caption"
                                         style={{
-                                            writingMode: 'vertical-rl',
-                                            transform: 'rotate(180deg)',
-                                            whiteSpace: 'nowrap',
-                                            height: 140,
-                                            display: 'flex',
-                                            alignItems: 'flex-end',
-                                            justifyContent: 'center',
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            color: primaryColor,
-                                        }}
-                                        title={sender.label}
-                                    >
-                                        {sender.label}
-                                    </div>
-                                </TableCell>
-                            ))}
-                        </TableRow>
-
-                        {/* Row con i gruppi dei sender (device) */}
-                        <TableRow>
-                            <TableCell
-                                style={{
-                                    backgroundColor: '#fff',
-                                    borderBottom: `3px solid ${nodeLineColor}`,
-                                    width: 240,
-                                    minWidth: 240,
-                                }}
-                            />
-                            {Object.values(senderGroups).map((group, idx) => (
-                                <TableCell
-                                    key={`${group.label}-${idx}`}
-                                    colSpan={group.count}
-                                    align="center"
-                                    style={{
-                                        backgroundColor: '#fff',
-                                        borderBottom: `3px solid ${nodeLineColor}`,
-                                        fontWeight: 700,
-                                        color: nodeLineColor,
-                                        fontSize: 12,
-                                    }}
-                                >
-                                    {group.label}
-                                </TableCell>
-                            ))}
-                        </TableRow>
-                    </TableHead>
-
-                    <TableBody>
-                        {receivers.map((receiver, rIdx) => {
-                            const rGroup = receiverGroups[receiver.device_id];
-                            const isFirstR = rGroup.firstId === receiver.id;
-                            const isLastRNode = isLastInGroup(
-                                rIdx,
-                                receivers,
-                                'device_id'
-                            );
-
-                            return (
-                                <TableRow key={receiver.id}>
-                                    <TableCell
-                                        style={{
-                                            width: 240,
-                                            minWidth: 240,
-                                            fontWeight: 600,
-                                            borderBottom: isLastRNode
-                                                ? `3px solid ${nodeLineColor}`
-                                                : `1px solid ${gridLineColor}`,
+                                            color: '#000',
+                                            fontWeight: 700,
+                                            fontSize: '0.7rem',
                                         }}
                                     >
-                                        {isFirstR && (
-                                            <Typography
-                                                variant="caption"
-                                                style={{
-                                                    display: 'block',
-                                                    color: nodeLineColor,
-                                                    fontWeight: 800,
-                                                }}
-                                            >
-                                                {rGroup.label}
-                                            </Typography>
-                                        )}
-                                        <Typography variant="body2">
-                                            {receiver.label}
-                                        </Typography>
-                                    </TableCell>
+                                        {receiver.label}
+                                    </Typography>
+                                </TableCell>
 
-                                    {senders.map((sender, sIdx) => {
-                                        const isConnected =
-                                            connections[receiver.id] ===
-                                            sender.id;
-                                        const isFirstSNode = isFirstInGroup(
-                                            sIdx,
-                                            senders,
-                                            'device_id'
-                                        );
-                                        const isLastSNode = isLastInGroup(
-                                            sIdx,
-                                            senders,
-                                            'device_id'
-                                        );
+                                {senders.map((sender, sIdx) => {
+                                    const isConnected =
+                                        connections[receiver.id] === sender.id;
+                                    const isFirstSNode = isFirstInGroup(
+                                        sIdx,
+                                        senders,
+                                        'device_id'
+                                    );
+                                    const isLastSNode = isLastInGroup(
+                                        sIdx,
+                                        senders,
+                                        'device_id'
+                                    );
 
-                                        return (
-                                            <TableCell
-                                                key={`${receiver.id}-${sender.id}`}
-                                                align="center"
-                                                onMouseEnter={() => {
-                                                    setHoveredRow(rIdx);
-                                                    setHoveredCol(sIdx);
-                                                }}
-                                                onClick={() =>
-                                                    onConnect(
-                                                        receiver,
-                                                        sender,
-                                                        !isConnected
-                                                    )
-                                                }
-                                                style={{
-                                                    cursor: 'pointer',
-                                                    backgroundColor: isConnected
-                                                        ? `${activeGreen}22`
-                                                        : hoveredRow === rIdx ||
+                                    return (
+                                        <TableCell
+                                            key={`${receiver.id}-${sender.id}`}
+                                            align="center"
+                                            onMouseEnter={() => {
+                                                setHoveredRow(rIdx);
+                                                setHoveredCol(sIdx);
+                                            }}
+                                            onClick={() =>
+                                                onConnect(
+                                                    receiver,
+                                                    sender,
+                                                    !isConnected
+                                                )
+                                            }
+                                            style={{
+                                                cursor: 'pointer',
+                                                backgroundColor: isConnected
+                                                    ? `${activeGreen}22`
+                                                    : hoveredRow === rIdx ||
+                                                        hoveredCol === sIdx
+                                                      ? crosshairColor
+                                                      : 'transparent',
+                                                borderLeft: isFirstSNode
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : 'none',
+                                                borderRight: isLastSNode
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : `1px solid ${gridLineColor}`,
+                                                borderBottom: isLastRNode
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : `1px solid ${gridLineColor}`,
+                                                width: cellSize,
+                                                minWidth: cellSize,
+                                                height: cellSize, // Forzatura cella
+                                                padding: 0,
+                                                boxSizing: 'border-box',
+                                            }}
+                                        >
+                                            {isConnected ? (
+                                                <CheckCircleIcon
+                                                    style={{
+                                                        color: activeGreen,
+                                                        fontSize: '1.2rem',
+                                                        display: 'block',
+                                                        margin: 'auto',
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span
+                                                    style={{
+                                                        color:
+                                                            hoveredRow ===
+                                                                rIdx ||
                                                             hoveredCol === sIdx
-                                                          ? crosshairColor
-                                                          : 'transparent',
-                                                    borderLeft: isFirstSNode
-                                                        ? `3px solid ${nodeLineColor}`
-                                                        : 'none',
-                                                    borderRight: isLastSNode
-                                                        ? `3px solid ${nodeLineColor}`
-                                                        : `1px solid ${gridLineColor}`,
-                                                    borderBottom: isLastRNode
-                                                        ? `3px solid ${nodeLineColor}`
-                                                        : `1px solid ${gridLineColor}`,
-                                                    width: cellSize,
-                                                    minWidth: cellSize,
-                                                    height: cellSize,
-                                                    padding: 0,
-                                                    boxSizing: 'border-box',
-                                                }}
-                                                title={`Connetti ${sender.label} → ${receiver.label}`}
-                                            >
-                                                {isConnected ? (
-                                                    <CheckCircleIcon
-                                                        style={{
-                                                            color: activeGreen,
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <span
-                                                        style={{
-                                                            opacity: 0.35,
-                                                        }}
-                                                    >
-                                                        ○
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                        );
-                                    })}
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-        </Paper>
+                                                                ? '#aaa'
+                                                                : '#eee',
+                                                        fontSize: '1rem',
+                                                    }}
+                                                >
+                                                    ○
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    );
+                                })}
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 };
 
