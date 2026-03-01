@@ -129,7 +129,7 @@ const MatrixVideo = ({ data }) => {
                 label.includes('aud')
             )
                 return 'Audio';
-            return 'Anc';
+            return 'Data';
         };
 
         const senders = normalize(data?.senders)
