@@ -11,6 +11,7 @@ import {
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import React, { useState } from 'react';
 import { useRedirect } from 'react-admin';
+import { useTheme } from '@material-ui/core/styles';
 
 const MatrixBase = ({
     senders,
@@ -21,20 +22,35 @@ const MatrixBase = ({
     primaryColor,
     lightBg,
 }) => {
+    const theme = useTheme();
+    const isDark = theme.palette.type === 'dark';
+
     const [hoveredRow, setHoveredRow] = useState(null);
     const [hoveredCol, setHoveredCol] = useState(null);
 
     const redirect = useRedirect();
 
-    // COSTANTE RIGIDA: Se vuoi celle più grandi o piccole, cambia solo questo numero
     const cellSize = 50;
 
-    const gridLineColor = '#ddd';
-    const nodeLineColor = 'rgb(1, 80, 72)';
-    const activeGreen = '#27ae60';
-    const crosshairColor = 'rgba(2, 112, 101, 0.12)';
+    /* =======================
+       🎨 COLORI LEGATI AL TEMA
+       ======================= */
 
-    // ✅ linea “fissa” sotto gli header sticky (evita effetto bordo che scorre)
+    const primary = primaryColor || theme.palette.primary.main;
+    const headerBg = primary;
+    const headerText = theme.palette.primary.contrastText;
+
+    const surfaceBg = theme.palette.background.paper;
+    const secondaryBg = theme.palette.action.hover;
+    const gridLineColor = theme.palette.divider;
+    const nodeLineColor = primary;
+
+    const activeGreen = theme.palette.success
+        ? theme.palette.success.main
+        : '#27ae60';
+
+    const crosshairColor = theme.palette.action.selected;
+
     const headerBottomLine = `inset 0 -3px 0 ${nodeLineColor}`;
 
     const getDeviceLabel = deviceId => {
@@ -44,6 +60,7 @@ const MatrixBase = ({
 
     const isLastInGroup = (idx, arr, key) =>
         idx === arr.length - 1 || arr[idx][key] !== arr[idx + 1][key];
+
     const isFirstInGroup = (idx, arr, key) =>
         idx === 0 || arr[idx][key] !== arr[idx - 1][key];
 
@@ -75,13 +92,12 @@ const MatrixBase = ({
                 setHoveredCol(null);
             }}
             style={{
-                backgroundColor: '#fff',
+                backgroundColor: surfaceBg,
                 boxShadow: 'none',
                 height: '100%',
                 overflow: 'auto',
             }}
         >
-            {/* TABLE-LAYOUT FIXED è fondamentale per i quadrati */}
             <Table
                 size="small"
                 stickyHeader
@@ -92,11 +108,11 @@ const MatrixBase = ({
                 }}
             >
                 <TableHead>
+                    {/* ================= HEADER RIGA 1 ================= */}
                     <TableRow style={{ height: cellSize }}>
                         <TableCell
                             style={{
-                                backgroundColor: lightBg,
-                                // borderBottom: `3px solid ${nodeLineColor}`,
+                                backgroundColor: surfaceBg,
                                 boxShadow: headerBottomLine,
                                 borderBottom: 'none',
                                 width: cellSize,
@@ -108,8 +124,7 @@ const MatrixBase = ({
                         />
                         <TableCell
                             style={{
-                                backgroundColor: lightBg,
-                                // borderBottom: `3px solid ${nodeLineColor}`,
+                                backgroundColor: surfaceBg,
                                 boxShadow: headerBottomLine,
                                 borderBottom: 'none',
                                 width: 180,
@@ -119,29 +134,25 @@ const MatrixBase = ({
                                 zIndex: 60,
                             }}
                         />
+
                         {Object.values(senderGroups).map((group, idx) => (
                             <TableCell
                                 key={idx}
                                 align="center"
                                 colSpan={group.count}
                                 style={{
-                                    backgroundColor: primaryColor,
-                                    color: '#fff',
+                                    backgroundColor: headerBg,
+                                    color: headerText,
                                     fontWeight: 'bold',
                                     fontSize: '0.7rem',
                                     borderLeft: `3px solid ${nodeLineColor}`,
-                                    // borderBottom: `3px solid ${nodeLineColor}`,
-                                    boxShadow: headerBottomLine,
-                                    borderBottom: 'none',
                                     borderRight:
                                         idx ===
                                         Object.values(senderGroups).length - 1
                                             ? `3px solid ${nodeLineColor}`
                                             : 'none',
-                                    height: cellSize,
-                                    boxSizing: 'border-box',
-                                    padding: '2px',
-
+                                    boxShadow: headerBottomLine,
+                                    borderBottom: 'none',
                                     position: 'sticky',
                                     top: 0,
                                     zIndex: 50,
@@ -152,15 +163,14 @@ const MatrixBase = ({
                         ))}
                     </TableRow>
 
+                    {/* ================= HEADER RIGA 2 ================= */}
                     <TableRow style={{ height: 140 }}>
-                        {/* Altezza fissa per i nomi verticali */}
                         <TableCell
                             colSpan={2}
                             style={{
-                                backgroundColor: lightBg,
-                                color: primaryColor,
+                                backgroundColor: surfaceBg,
+                                color: primary,
                                 fontWeight: 'bold',
-                                // borderBottom: `3px solid ${nodeLineColor}`,
                                 boxShadow: headerBottomLine,
                                 borderBottom: 'none',
                                 borderRight: `3px solid ${nodeLineColor}`,
@@ -181,11 +191,8 @@ const MatrixBase = ({
                                 style={{
                                     backgroundColor:
                                         hoveredCol === idx
-                                            ? `${primaryColor}20`
-                                            : lightBg,
-                                    // borderBottom: `3px solid ${nodeLineColor}`,
-                                    boxShadow: headerBottomLine,
-                                    borderBottom: 'none',
+                                            ? theme.palette.action.hover
+                                            : surfaceBg,
                                     borderLeft: isFirstInGroup(
                                         idx,
                                         senders,
@@ -200,17 +207,14 @@ const MatrixBase = ({
                                     )
                                         ? `3px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
-
-                                    // ✅ sticky seconda riga header
+                                    boxShadow: headerBottomLine,
+                                    borderBottom: 'none',
                                     position: 'sticky',
                                     top: cellSize,
-
                                     zIndex: 45,
                                     width: cellSize,
                                     minWidth: cellSize,
-                                    maxWidth: cellSize, // Forzatura larghezza
-                                    boxSizing: 'border-box',
-                                    overflow: 'hidden',
+                                    maxWidth: cellSize,
                                 }}
                             >
                                 <div
@@ -223,7 +227,6 @@ const MatrixBase = ({
                                         transform: 'rotate(180deg)',
                                         fontSize: '0.65rem',
                                         fontWeight: 700,
-                                        margin: 'auto',
                                         whiteSpace: 'nowrap',
                                     }}
                                 >
@@ -234,6 +237,7 @@ const MatrixBase = ({
                     </TableRow>
                 </TableHead>
 
+                {/* ================= BODY ================= */}
                 <TableBody>
                     {receivers.map((receiver, rIdx) => {
                         const rGroup = receiverGroups[receiver.device_id];
@@ -248,9 +252,7 @@ const MatrixBase = ({
                             <TableRow
                                 key={receiver.id}
                                 style={{
-                                    height: cellSize, // FORZA ALTEZZA RIGA
-                                    minHeight: cellSize,
-                                    maxHeight: cellSize,
+                                    height: cellSize,
                                     backgroundColor:
                                         hoveredRow === rIdx
                                             ? crosshairColor
@@ -261,11 +263,9 @@ const MatrixBase = ({
                                     <TableCell
                                         rowSpan={rGroup.count}
                                         style={{
-                                            backgroundColor: primaryColor,
-                                            color: '#fff',
-                                            textAlign: 'center',
+                                            backgroundColor: headerBg,
+                                            color: headerText,
                                             width: cellSize,
-                                            minWidth: cellSize,
                                             borderBottom: `3px solid ${nodeLineColor}`,
                                             borderRight: `3px solid ${nodeLineColor}`,
                                             position: 'sticky',
@@ -287,15 +287,14 @@ const MatrixBase = ({
                                 )}
 
                                 <TableCell
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        redirect(`/receivers/${receiver.id}`);
-                                    }}
+                                    onClick={() =>
+                                        redirect(`/receivers/${receiver.id}`)
+                                    }
                                     style={{
                                         backgroundColor:
                                             hoveredRow === rIdx
-                                                ? `${primaryColor}25`
-                                                : '#f5f5f5',
+                                                ? secondaryBg
+                                                : surfaceBg,
                                         borderRight: `3px solid ${nodeLineColor}`,
                                         borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
@@ -304,13 +303,11 @@ const MatrixBase = ({
                                         left: cellSize,
                                         zIndex: 5,
                                         width: 180,
-                                        boxSizing: 'border-box',
                                     }}
                                 >
                                     <Typography
                                         variant="caption"
                                         style={{
-                                            color: '#000',
                                             fontWeight: 700,
                                             fontSize: '0.7rem',
                                         }}
@@ -322,16 +319,6 @@ const MatrixBase = ({
                                 {senders.map((sender, sIdx) => {
                                     const isConnected =
                                         connections[receiver.id] === sender.id;
-                                    const isFirstSNode = isFirstInGroup(
-                                        sIdx,
-                                        senders,
-                                        'device_id'
-                                    );
-                                    const isLastSNode = isLastInGroup(
-                                        sIdx,
-                                        senders,
-                                        'device_id'
-                                    );
 
                                     return (
                                         <TableCell
@@ -356,20 +343,13 @@ const MatrixBase = ({
                                                         hoveredCol === sIdx
                                                       ? crosshairColor
                                                       : 'transparent',
-                                                borderLeft: isFirstSNode
-                                                    ? `3px solid ${nodeLineColor}`
-                                                    : 'none',
-                                                borderRight: isLastSNode
-                                                    ? `3px solid ${nodeLineColor}`
-                                                    : `1px solid ${gridLineColor}`,
                                                 borderBottom: isLastRNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
+                                                borderRight: `1px solid ${gridLineColor}`,
                                                 width: cellSize,
-                                                minWidth: cellSize,
-                                                height: cellSize, // Forzatura cella
+                                                height: cellSize,
                                                 padding: 0,
-                                                boxSizing: 'border-box',
                                             }}
                                         >
                                             {isConnected ? (
@@ -377,20 +357,13 @@ const MatrixBase = ({
                                                     style={{
                                                         color: activeGreen,
                                                         fontSize: '1.2rem',
-                                                        display: 'block',
-                                                        margin: 'auto',
                                                     }}
                                                 />
                                             ) : (
                                                 <span
                                                     style={{
-                                                        color:
-                                                            hoveredRow ===
-                                                                rIdx ||
-                                                            hoveredCol === sIdx
-                                                                ? '#aaa'
-                                                                : '#eee',
-                                                        fontSize: '1rem',
+                                                        color: theme.palette
+                                                            .text.disabled,
                                                     }}
                                                 >
                                                     ○
