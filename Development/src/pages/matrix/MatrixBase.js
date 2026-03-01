@@ -10,6 +10,7 @@ import {
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import React, { useState } from 'react';
+import { useRedirect } from 'react-admin';
 
 const MatrixBase = ({
     senders,
@@ -22,6 +23,8 @@ const MatrixBase = ({
 }) => {
     const [hoveredRow, setHoveredRow] = useState(null);
     const [hoveredCol, setHoveredCol] = useState(null);
+
+    const redirect = useRedirect();
 
     // COSTANTE RIGIDA: Se vuoi celle più grandi o piccole, cambia solo questo numero
     const cellSize = 50;
@@ -188,6 +191,10 @@ const MatrixBase = ({
                                 }}
                             >
                                 <div
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        redirect(`/senders/${sender.id}`);
+                                    }}
                                     style={{
                                         writingMode: 'vertical-rl',
                                         transform: 'rotate(180deg)',
@@ -257,6 +264,10 @@ const MatrixBase = ({
                                 )}
 
                                 <TableCell
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        redirect(`/receivers/${receiver.id}`);
+                                    }}
                                     style={{
                                         backgroundColor:
                                             hoveredRow === rIdx
