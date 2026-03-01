@@ -228,13 +228,6 @@ const MatrixVideo = ({ data }) => {
                 justifyContent="space-between"
                 mb={2}
             >
-                <Typography
-                    variant="h6"
-                    style={{ color: theme?.palette?.text?.primary }}
-                >
-                    NMOS MATRIX CONTROL
-                </Typography>
-
                 <Box>
                     {['Video', 'Audio', 'Anc'].map(cat => (
                         <Button
