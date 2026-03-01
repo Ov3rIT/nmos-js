@@ -5,7 +5,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import set from 'lodash/set';
 
 import { ThemeContext } from '../../theme/ThemeContext';
-import MatrixBase from './MatrixBase';
+import MatrixPro from './MatrixPro';
 
 import makeConnection from '../../components/makeConnection';
 import dataProvider from '../../dataProvider';
@@ -321,7 +321,7 @@ const MatrixVideo = ({ data }) => {
 
             {/* Area scrollabile: la tabella scrolla qui dentro, non la pagina */}
             <Box style={{ flex: '1 1 auto', minHeight: 0 }}>
-                <MatrixBase
+                <MatrixPro
                     senders={processed.senders}
                     receivers={processed.receivers}
                     devices={processed.devices}
