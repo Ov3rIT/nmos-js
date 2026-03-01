@@ -19,37 +19,31 @@ const MatrixBase = ({
     devices,
     connections,
     onConnect,
-    primaryColor,
-    lightBg,
 }) => {
     const theme = useTheme();
+    const redirect = useRedirect();
+
     const isDark = theme.palette.type === 'dark';
 
     const [hoveredRow, setHoveredRow] = useState(null);
     const [hoveredCol, setHoveredCol] = useState(null);
 
-    const redirect = useRedirect();
-
     const cellSize = 50;
 
-    /* =======================
-       🎨 COLORI LEGATI AL TEMA
-       ======================= */
+    /* ================= THEME COLORS ================= */
 
-    const primary = primaryColor || theme.palette.primary.main;
-    const headerBg = primary;
+    const primary = theme.palette.primary.main;
     const headerText = theme.palette.primary.contrastText;
 
     const surfaceBg = theme.palette.background.paper;
-    const secondaryBg = theme.palette.action.hover;
+    const headerBg = theme.palette.background.paper; // 👈 fondo solido
     const gridLineColor = theme.palette.divider;
     const nodeLineColor = primary;
 
-    const activeGreen = theme.palette.success
-        ? theme.palette.success.main
-        : '#27ae60';
+    const activeGreen =
+        theme.palette.success?.main || theme.palette.primary.main;
 
-    const crosshairColor = theme.palette.action.selected;
+    const crosshairColor = theme.palette.action.hover;
 
     const headerBottomLine = `inset 0 -3px 0 ${nodeLineColor}`;
 
@@ -108,30 +102,28 @@ const MatrixBase = ({
                 }}
             >
                 <TableHead>
-                    {/* ================= HEADER RIGA 1 ================= */}
+                    {/* ================= ROW 1 ================= */}
                     <TableRow style={{ height: cellSize }}>
                         <TableCell
                             style={{
-                                backgroundColor: surfaceBg,
+                                backgroundColor: headerBg,
                                 boxShadow: headerBottomLine,
-                                borderBottom: 'none',
                                 width: cellSize,
                                 position: 'sticky',
                                 top: 0,
                                 left: 0,
-                                zIndex: 60,
+                                zIndex: 100,
                             }}
                         />
                         <TableCell
                             style={{
-                                backgroundColor: surfaceBg,
+                                backgroundColor: headerBg,
                                 boxShadow: headerBottomLine,
-                                borderBottom: 'none',
                                 width: 180,
                                 position: 'sticky',
                                 top: 0,
                                 left: cellSize,
-                                zIndex: 60,
+                                zIndex: 100,
                             }}
                         />
 
@@ -141,21 +133,23 @@ const MatrixBase = ({
                                 align="center"
                                 colSpan={group.count}
                                 style={{
-                                    backgroundColor: headerBg,
+                                    backgroundColor: primary,
                                     color: headerText,
                                     fontWeight: 'bold',
                                     fontSize: '0.7rem',
+
                                     borderLeft: `3px solid ${nodeLineColor}`,
                                     borderRight:
                                         idx ===
                                         Object.values(senderGroups).length - 1
                                             ? `3px solid ${nodeLineColor}`
                                             : 'none',
+
                                     boxShadow: headerBottomLine,
-                                    borderBottom: 'none',
+
                                     position: 'sticky',
                                     top: 0,
-                                    zIndex: 50,
+                                    zIndex: 90,
                                 }}
                             >
                                 {group.label}
@@ -163,21 +157,22 @@ const MatrixBase = ({
                         ))}
                     </TableRow>
 
-                    {/* ================= HEADER RIGA 2 ================= */}
+                    {/* ================= ROW 2 ================= */}
                     <TableRow style={{ height: 140 }}>
                         <TableCell
                             colSpan={2}
                             style={{
-                                backgroundColor: surfaceBg,
+                                backgroundColor: headerBg,
                                 color: primary,
                                 fontWeight: 'bold',
-                                boxShadow: headerBottomLine,
-                                borderBottom: 'none',
+
                                 borderRight: `3px solid ${nodeLineColor}`,
+                                boxShadow: headerBottomLine,
+
                                 position: 'sticky',
                                 left: 0,
                                 top: cellSize,
-                                zIndex: 55,
+                                zIndex: 95,
                                 textAlign: 'center',
                             }}
                         >
@@ -189,10 +184,8 @@ const MatrixBase = ({
                                 key={sender.id}
                                 align="center"
                                 style={{
-                                    backgroundColor:
-                                        hoveredCol === idx
-                                            ? theme.palette.action.hover
-                                            : surfaceBg,
+                                    backgroundColor: headerBg,
+
                                     borderLeft: isFirstInGroup(
                                         idx,
                                         senders,
@@ -207,11 +200,13 @@ const MatrixBase = ({
                                     )
                                         ? `3px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
+
                                     boxShadow: headerBottomLine,
-                                    borderBottom: 'none',
+
                                     position: 'sticky',
                                     top: cellSize,
-                                    zIndex: 45,
+                                    zIndex: 85,
+
                                     width: cellSize,
                                     minWidth: cellSize,
                                     maxWidth: cellSize,
@@ -263,14 +258,16 @@ const MatrixBase = ({
                                     <TableCell
                                         rowSpan={rGroup.count}
                                         style={{
-                                            backgroundColor: headerBg,
+                                            backgroundColor: primary,
                                             color: headerText,
-                                            width: cellSize,
+
                                             borderBottom: `3px solid ${nodeLineColor}`,
                                             borderRight: `3px solid ${nodeLineColor}`,
+
                                             position: 'sticky',
                                             left: 0,
-                                            zIndex: 5,
+                                            zIndex: 10,
+                                            width: cellSize,
                                         }}
                                     >
                                         <div
@@ -293,15 +290,17 @@ const MatrixBase = ({
                                     style={{
                                         backgroundColor:
                                             hoveredRow === rIdx
-                                                ? secondaryBg
+                                                ? theme.palette.action.hover
                                                 : surfaceBg,
+
                                         borderRight: `3px solid ${nodeLineColor}`,
                                         borderBottom: isLastRNode
                                             ? `3px solid ${nodeLineColor}`
                                             : `1px solid ${gridLineColor}`,
+
                                         position: 'sticky',
                                         left: cellSize,
-                                        zIndex: 5,
+                                        zIndex: 10,
                                         width: 180,
                                     }}
                                 >
@@ -320,14 +319,21 @@ const MatrixBase = ({
                                     const isConnected =
                                         connections[receiver.id] === sender.id;
 
+                                    const isFirstSNode = isFirstInGroup(
+                                        sIdx,
+                                        senders,
+                                        'device_id'
+                                    );
+                                    const isLastSNode = isLastInGroup(
+                                        sIdx,
+                                        senders,
+                                        'device_id'
+                                    );
+
                                     return (
                                         <TableCell
                                             key={`${receiver.id}-${sender.id}`}
                                             align="center"
-                                            onMouseEnter={() => {
-                                                setHoveredRow(rIdx);
-                                                setHoveredCol(sIdx);
-                                            }}
                                             onClick={() =>
                                                 onConnect(
                                                     receiver,
@@ -337,16 +343,26 @@ const MatrixBase = ({
                                             }
                                             style={{
                                                 cursor: 'pointer',
+
                                                 backgroundColor: isConnected
                                                     ? `${activeGreen}22`
                                                     : hoveredRow === rIdx ||
                                                         hoveredCol === sIdx
                                                       ? crosshairColor
                                                       : 'transparent',
+
+                                                borderLeft: isFirstSNode
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : 'none',
+
+                                                borderRight: isLastSNode
+                                                    ? `3px solid ${nodeLineColor}`
+                                                    : `1px solid ${gridLineColor}`,
+
                                                 borderBottom: isLastRNode
                                                     ? `3px solid ${nodeLineColor}`
                                                     : `1px solid ${gridLineColor}`,
-                                                borderRight: `1px solid ${gridLineColor}`,
+
                                                 width: cellSize,
                                                 height: cellSize,
                                                 padding: 0,
