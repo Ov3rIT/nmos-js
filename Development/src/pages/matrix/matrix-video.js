@@ -1,6 +1,8 @@
 import { Box, Button, Typography } from '@material-ui/core';
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotify, useRefresh } from 'react-admin';
+import cloneDeep from 'lodash/cloneDeep';
+import set from 'lodash/set';
 
 import { ThemeContext } from '../../theme/ThemeContext';
 import MatrixBase from './MatrixBase';
@@ -23,7 +25,7 @@ const MatrixVideo = ({ data }) => {
     // receiverId -> senderId (stato reale IS-05 $active)
     const [connections, setConnections] = useState({});
 
-    // evita race condition se arrivano più refresh ravvicinati
+    // evita race condition su reload
     const loadSeq = useRef(0);
 
     const primaryColor = 'rgb(2, 112, 101)';
@@ -32,7 +34,7 @@ const MatrixVideo = ({ data }) => {
     const normalize = items =>
         Array.isArray(items) ? items : Object.values(items || {});
 
-    // Map flowsById per fallback (sender.flow_id -> flow.format)
+    // Map flowsById (fallback per capire la categoria del sender)
     const flowsById = useMemo(() => {
         const map = {};
         normalize(data?.flows).forEach(f => {
@@ -41,7 +43,6 @@ const MatrixVideo = ({ data }) => {
         return map;
     }, [data]);
 
-    // Liste filtrate per UI (Video/Audio/Anc) — NON è la compatibilità
     const processed = useMemo(() => {
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
@@ -83,8 +84,8 @@ const MatrixVideo = ({ data }) => {
     }, [data, activeFilters]);
 
     /**
-     * Legge lo stato reale IS-05: per ogni receiver prende $active.sender_id
-     * e aggiorna "connections" così le icone tornano corrette.
+     * Carica stato reale IS-05: receiver.$active.sender_id
+     * per mostrare le icone corrette.
      */
     useEffect(() => {
         let cancelled = false;
@@ -109,8 +110,7 @@ const MatrixVideo = ({ data }) => {
                             const senderId =
                                 resp?.data?.$active?.sender_id ?? null;
                             return [r.id, senderId];
-                        } catch (e) {
-                            // se un device non risponde, non bloccare tutto
+                        } catch {
                             return [r.id, null];
                         }
                     })
@@ -130,32 +130,55 @@ const MatrixVideo = ({ data }) => {
         };
 
         loadActiveConnections();
-
         return () => {
             cancelled = true;
         };
     }, [processed.receivers]);
 
     /**
+     * Disconnect vendor-agnostico:
+     * - stage sender_id=null
+     * - activation immediate
+     *
+     * NB: non forzo master_enable=false per evitare comportamenti vendor-specific
+     * (alcuni receiver non gradiscono master_enable=false).
+     * Se vuoi, lo rendiamo opzionale.
+     */
+    const disconnectReceiver = async receiverId => {
+        const { data: receiver } = await dataProvider('GET_ONE', 'receivers', {
+            id: receiverId,
+        });
+
+        const patchData = cloneDeep(receiver);
+        set(patchData, '$staged.sender_id', null);
+        set(patchData, '$staged.activation.mode', 'activate_immediate');
+        set(patchData, '$staged.activation.requested_time', null);
+
+        await dataProvider('UPDATE', 'receivers', {
+            id: receiverId,
+            data: patchData,
+            previousData: receiver,
+        });
+    };
+
+    /**
      * Click matrice:
-     * - check compatibilità formato (IS-04 format + fallback flow.format) prima del patch
-     * - se ok: makeConnection(..., 'active')
-     * - poi ricarica stato $active per aggiornare le icone
+     * - se shouldConnect=true: check compatibilità -> makeConnection active
+     * - se shouldConnect=false: disconnect receiver (clear sender_id) + activate
      */
     const handleConnect = async (receiver, sender, shouldConnect) => {
         try {
-            // Nella tua MatrixBase il click su una cella "attiva" passa shouldConnect=false.
-            // Qui mantengo il comportamento: se clicchi su una cella già connessa, lo trattiamo come "non implementato".
-            // Se vuoi anche il disconnect reale, te lo aggiungo in modo vendor-agnostico.
             if (!shouldConnect) {
-                notify(
-                    '⛔ Disconnessione non implementata in questa versione',
-                    'info'
-                );
+                await disconnectReceiver(receiver.id);
+
+                // aggiorna subito icona per quel receiver
+                setConnections(prev => ({ ...prev, [receiver.id]: null }));
+                notify('⛔ Disconnesso', 'info');
+                refresh();
                 return;
             }
 
-            // 1) check formato prima di patchare
+            // 1) check compatibilità prima della connect
             const { ok, reason } = checkCompatibility(
                 sender,
                 receiver,
@@ -166,24 +189,20 @@ const MatrixVideo = ({ data }) => {
                 return;
             }
 
-            // 2) patch/activate usando la pipeline standard nmos-js
+            // 2) connect/activate via pipeline nmos-js
             await makeConnection(sender.id, receiver.id, 'active');
-
             notify('✅ Connessione attivata', 'info');
 
-            // 3) refresh react-admin (risorse IS-04)
             refresh();
 
-            // 4) ricarica subito $active per aggiornare le icone senza aspettare
-            //    (stessa logica del useEffect, ma immediata sul receiver interessato)
+            // 3) rilegge $active del receiver per icona accurata
             try {
                 const resp = await dataProvider('GET_ONE', 'receivers', {
                     id: receiver.id,
                 });
-                const senderId = resp?.data?.$active?.sender_id ?? null;
+                const senderId = resp?.data?.$active?.sender_id ?? sender.id;
                 setConnections(prev => ({ ...prev, [receiver.id]: senderId }));
             } catch {
-                // se non riesce, non bloccare: il useEffect riallineerà al prossimo giro
                 setConnections(prev => ({ ...prev, [receiver.id]: sender.id }));
             }
         } catch (error) {
@@ -197,7 +216,7 @@ const MatrixVideo = ({ data }) => {
                 notify(String(error?.message || error), 'warning');
             }
             // eslint-disable-next-line no-console
-            console.error('❌ Errore connect:', error);
+            console.error('❌ Errore connect/disconnect:', error);
         }
     };
 
