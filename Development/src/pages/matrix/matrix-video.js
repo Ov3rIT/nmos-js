@@ -2,10 +2,10 @@ import {
     Box,
     Button,
     Dialog,
-    DialogTitle,
+    DialogActions,
     DialogContent,
     DialogContentText,
-    DialogActions,
+    DialogTitle,
     Typography,
 } from '@material-ui/core';
 import React, { useContext, useMemo, useState } from 'react';
