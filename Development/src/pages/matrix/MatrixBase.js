@@ -36,7 +36,7 @@ const MatrixBase = ({
     const headerText = theme.palette.primary.contrastText;
 
     const surfaceBg = theme.palette.background.paper;
-    const headerBg = theme.palette.background.paper; // 👈 fondo solido
+    const headerBg = theme.palette.background.paper;
     const gridLineColor = theme.palette.divider;
     const nodeLineColor = primary;
 
@@ -145,7 +145,10 @@ const MatrixBase = ({
                                             ? `3px solid ${nodeLineColor}`
                                             : 'none',
 
-                                    boxShadow: headerBottomLine,
+                                    boxShadow: `
+                                        ${headerBottomLine},
+                                        inset 0 -1px 0 ${gridLineColor}
+                                    `,
 
                                     position: 'sticky',
                                     top: 0,
@@ -183,6 +186,7 @@ const MatrixBase = ({
                             <TableCell
                                 key={sender.id}
                                 align="center"
+                                onMouseEnter={() => setHoveredCol(idx)}
                                 style={{
                                     backgroundColor: headerBg,
 
@@ -193,6 +197,7 @@ const MatrixBase = ({
                                     )
                                         ? `3px solid ${nodeLineColor}`
                                         : 'none',
+
                                     borderRight: isLastInGroup(
                                         idx,
                                         senders,
@@ -201,7 +206,10 @@ const MatrixBase = ({
                                         ? `3px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
 
-                                    boxShadow: headerBottomLine,
+                                    boxShadow: `
+                                        ${headerBottomLine},
+                                        inset -1px 0 0 ${gridLineColor}
+                                    `,
 
                                     position: 'sticky',
                                     top: cellSize,
@@ -223,6 +231,7 @@ const MatrixBase = ({
                                         fontSize: '0.65rem',
                                         fontWeight: 700,
                                         whiteSpace: 'nowrap',
+                                        cursor: 'pointer',
                                     }}
                                 >
                                     {sender.label}
@@ -302,6 +311,7 @@ const MatrixBase = ({
                                         left: cellSize,
                                         zIndex: 10,
                                         width: 180,
+                                        cursor: 'pointer',
                                     }}
                                 >
                                     <Typography
@@ -341,6 +351,10 @@ const MatrixBase = ({
                                                     !isConnected
                                                 )
                                             }
+                                            onMouseEnter={() => {
+                                                setHoveredRow(rIdx);
+                                                setHoveredCol(sIdx);
+                                            }}
                                             style={{
                                                 cursor: 'pointer',
 
