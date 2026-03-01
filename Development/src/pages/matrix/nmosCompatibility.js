@@ -108,6 +108,7 @@ export function checkCompatibility(sender, receiver, flowsById) {
 
     // Special-case: ANC spesso passa come DATA
     if ((sCat === 'anc' && rCats.has('data')) || rCats.has('Data')) {
+        console.log('sCAT:' + sCat + '; rCATS:' + rCats);
         return {
             ok: true,
             reason: null,
