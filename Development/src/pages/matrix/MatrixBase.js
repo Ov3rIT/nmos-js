@@ -138,7 +138,6 @@ const MatrixBase = ({
                     </TableRow>
 
                     <TableRow style={{ height: 140 }}>
-                        {' '}
                         {/* Altezza fissa per i nomi verticali */}
                         <TableCell
                             colSpan={2}
