@@ -273,7 +273,15 @@ const MatrixVideo = ({ data }) => {
     };
 
     return (
-        <Box>
+        <Box
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: 'calc(100vh - 64px)', // 64px ~ AppBar react-admin (aggiusta se serve)
+                minHeight: 0, // IMPORTANTISSIMO per permettere overflow nei figli
+            }}
+        >
+            {/* Toolbar filtri (resta “su”) */}
             <Box
                 style={{
                     display: 'flex',
@@ -282,51 +290,47 @@ const MatrixVideo = ({ data }) => {
                     gap: 16,
                     paddingTop: 12,
                     paddingBottom: 12,
+                    flex: '0 0 auto',
                 }}
             >
                 <TogglePill
                     label="VIDEO"
                     checked={!!activeFilters.Video}
                     onChange={() =>
-                        setActiveFilters(prev => ({
-                            ...prev,
-                            Video: !prev.Video,
-                        }))
+                        setActiveFilters(p => ({ ...p, Video: !p.Video }))
                     }
                     colorOn={primaryColor}
                 />
-
                 <TogglePill
                     label="AUDIO"
                     checked={!!activeFilters.Audio}
                     onChange={() =>
-                        setActiveFilters(prev => ({
-                            ...prev,
-                            Audio: !prev.Audio,
-                        }))
+                        setActiveFilters(p => ({ ...p, Audio: !p.Audio }))
                     }
                     colorOn={primaryColor}
                 />
-
                 <TogglePill
                     label="ANC"
                     checked={!!activeFilters.Anc}
                     onChange={() =>
-                        setActiveFilters(prev => ({ ...prev, Anc: !prev.Anc }))
+                        setActiveFilters(p => ({ ...p, Anc: !p.Anc }))
                     }
                     colorOn={primaryColor}
                 />
             </Box>
 
-            <MatrixBase
-                senders={processed.senders}
-                receivers={processed.receivers}
-                devices={processed.devices}
-                connections={connections}
-                onConnect={handleConnect}
-                primaryColor={primaryColor}
-                lightBg={lightBg}
-            />
+            {/* Area scrollabile: la tabella scrolla qui dentro, non la pagina */}
+            <Box style={{ flex: '1 1 auto', minHeight: 0 }}>
+                <MatrixBase
+                    senders={processed.senders}
+                    receivers={processed.receivers}
+                    devices={processed.devices}
+                    connections={connections}
+                    onConnect={handleConnect}
+                    primaryColor={primaryColor}
+                    lightBg={lightBg}
+                />
+            </Box>
         </Box>
     );
 };

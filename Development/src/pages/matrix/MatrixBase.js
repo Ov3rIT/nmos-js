@@ -74,8 +74,8 @@ const MatrixBase = ({
             style={{
                 backgroundColor: '#fff',
                 boxShadow: 'none',
-                height: '100%',
-                overflow: 'auto',
+                height: '100%', // ✅ prende tutta l’altezza del Box padre
+                overflow: 'auto', // ✅ lo scroll avviene qui dentro
             }}
         >
             {/* TABLE-LAYOUT FIXED è fondamentale per i quadrati */}
@@ -96,8 +96,9 @@ const MatrixBase = ({
                                 borderBottom: `3px solid ${nodeLineColor}`,
                                 width: cellSize,
                                 position: 'sticky',
+                                top: 0, // ✅ prima riga header incollata al top
                                 left: 0,
-                                zIndex: 40,
+                                zIndex: 60, // sopra tutto
                             }}
                         />
                         <TableCell
@@ -106,8 +107,9 @@ const MatrixBase = ({
                                 borderBottom: `3px solid ${nodeLineColor}`,
                                 width: 180,
                                 position: 'sticky',
+                                top: 0, // ✅ prima riga header incollata al top
                                 left: cellSize,
-                                zIndex: 40,
+                                zIndex: 60,
                             }}
                         />
                         {Object.values(senderGroups).map((group, idx) => (
@@ -130,6 +132,11 @@ const MatrixBase = ({
                                     height: cellSize,
                                     boxSizing: 'border-box',
                                     padding: '2px',
+
+                                    // ✅ prima riga header sticky
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 50,
                                 }}
                             >
                                 {group.label}
@@ -147,10 +154,11 @@ const MatrixBase = ({
                                 fontWeight: 'bold',
                                 borderBottom: `3px solid ${nodeLineColor}`,
                                 borderRight: `3px solid ${nodeLineColor}`,
+
                                 position: 'sticky',
                                 left: 0,
-                                top: cellSize,
-                                zIndex: 35,
+                                top: cellSize, // ✅ sotto la prima riga header
+                                zIndex: 55,
                                 textAlign: 'center',
                             }}
                         >
@@ -181,17 +189,16 @@ const MatrixBase = ({
                                     )
                                         ? `3px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
-
-                                    // ✅ FIX: sticky anche per la seconda riga header
-                                    position: 'sticky',
-                                    top: cellSize,
-
-                                    zIndex: 10,
                                     width: cellSize,
                                     minWidth: cellSize,
-                                    maxWidth: cellSize, // Forzatura larghezza
+                                    maxWidth: cellSize,
                                     boxSizing: 'border-box',
                                     overflow: 'hidden',
+
+                                    // ✅ seconda riga header sticky
+                                    position: 'sticky',
+                                    top: cellSize,
+                                    zIndex: 45,
                                 }}
                             >
                                 <div
@@ -229,7 +236,7 @@ const MatrixBase = ({
                             <TableRow
                                 key={receiver.id}
                                 style={{
-                                    height: cellSize, // FORZA ALTEZZA RIGA
+                                    height: cellSize,
                                     minHeight: cellSize,
                                     maxHeight: cellSize,
                                     backgroundColor:
@@ -348,7 +355,7 @@ const MatrixBase = ({
                                                     : `1px solid ${gridLineColor}`,
                                                 width: cellSize,
                                                 minWidth: cellSize,
-                                                height: cellSize, // Forzatura cella
+                                                height: cellSize,
                                                 padding: 0,
                                                 boxSizing: 'border-box',
                                             }}
