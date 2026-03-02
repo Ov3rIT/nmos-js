@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQueryWithStore } from 'react-admin';
 import MatrixVideo from './matrix-video';
 import './matrix-style.css';
