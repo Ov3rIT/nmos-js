@@ -1,15 +1,18 @@
-import React from 'react';
-import { Error, Loading, useQueryWithStore } from 'react-admin';
+import React, { useEffect, useState, useRef } from 'react';
+import { useQueryWithStore } from 'react-admin';
 import MatrixVideo from './matrix-video';
 import './matrix-style.css';
 
 const MatrixPage = () => {
-    // Caricamento di tutte le risorse necessarie con limite a 100
     const queryConfig = {
         pagination: { page: 1, perPage: 100 },
         sort: { field: 'label', order: 'ASC' },
         filter: {},
     };
+
+    /*
+     * Query originali
+     */
 
     const { data: senders, loading: loadingS } = useQueryWithStore({
         type: 'getList',
@@ -41,16 +44,45 @@ const MatrixPage = () => {
         payload: { ...queryConfig, sort: { field: 'id', order: 'ASC' } },
     });
 
-    if (loadingS || loadingR || loadingF || loadingD || loadingN)
-        return <Loading />;
+    /*
+     * 🔥 STATO STABILE ANTI-FLICKER
+     */
 
-    const nmosData = {
-        senders: senders || [],
-        receivers: receivers || [],
-        flows: flows || [],
-        devices: devices || [],
-        nodes: nodes || [],
-    };
+    const [stableData, setStableData] = useState({
+        senders: [],
+        receivers: [],
+        flows: [],
+        devices: [],
+        nodes: [],
+    });
+
+    const hasInitialized = useRef(false);
+
+    useEffect(() => {
+        if (senders && receivers && flows && devices && nodes) {
+            setStableData({
+                senders,
+                receivers,
+                flows,
+                devices,
+                nodes,
+            });
+
+            hasInitialized.current = true;
+        }
+    }, [senders, receivers, flows, devices, nodes]);
+
+    /*
+     * ⛔ IMPORTANTISSIMO:
+     * Mostriamo <Loading /> SOLO al primo mount
+     * Mai più dopo.
+     */
+
+    if (!hasInitialized.current) {
+        if (loadingS || loadingR || loadingF || loadingD || loadingN) {
+            return <div style={{ height: '100vh' }} />;
+        }
+    }
 
     return (
         <div className="matrix-page-container">
@@ -71,11 +103,12 @@ const MatrixPage = () => {
                         fontSize: '0.8rem',
                     }}
                 >
-                    S: {nmosData.senders.length} | R:{' '}
-                    {nmosData.receivers.length} | F: {nmosData.flows.length}
+                    S: {stableData.senders.length} | R:{' '}
+                    {stableData.receivers.length} | F: {stableData.flows.length}
                 </span>
             </div>
-            <MatrixVideo data={nmosData} />
+
+            <MatrixVideo data={stableData} />
         </div>
     );
 };
