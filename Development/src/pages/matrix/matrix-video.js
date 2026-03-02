@@ -1,4 +1,4 @@
-import { Box, Typography } from '@material-ui/core';
+import { Box } from '@material-ui/core';
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotify, useRefresh } from 'react-admin';
 import cloneDeep from 'lodash/cloneDeep';
@@ -47,7 +47,6 @@ const TogglePill = ({ label, checked, onChange, colorOn = '#027065' }) => {
             >
                 {label}
             </span>
-
             <span
                 style={{
                     width: 34,
@@ -91,7 +90,12 @@ const MatrixVideo = ({ data }) => {
     // receiverId -> senderId (stato reale IS-05 $active)
     const [connections, setConnections] = useState({});
 
-    // evita race condition su reload
+    // Ref per evitare il flickering: mantiene l'ultimo stato valido della tabella
+    const lastValidProcessed = useRef({
+        senders: [],
+        receivers: [],
+        devices: [],
+    });
     const loadSeq = useRef(0);
 
     const primaryColor = 'rgb(2, 112, 101)';
@@ -100,7 +104,6 @@ const MatrixVideo = ({ data }) => {
     const normalize = items =>
         Array.isArray(items) ? items : Object.values(items || {});
 
-    // Map flowsById (fallback per capire la categoria del sender)
     const flowsById = useMemo(() => {
         const map = {};
         normalize(data?.flows).forEach(f => {
@@ -110,13 +113,18 @@ const MatrixVideo = ({ data }) => {
     }, [data]);
 
     const processed = useMemo(() => {
+        // Se i dati sono in fase di caricamento (null o undefined),
+        // restituiamo l'ultimo dato mostrato per evitare che la tabella sparisca
+        if (!data || (!data.senders && !data.receivers)) {
+            return lastValidProcessed.current;
+        }
+
         const sortAlpha = (a, b) =>
             (a.label || '').localeCompare(b.label || '');
 
         const getCategoryForFilter = item => {
             const fmt = String(item.format || '').toLowerCase();
             const label = String(item.label || '').toLowerCase();
-
             if (
                 fmt.includes('video') ||
                 label.includes('video') ||
@@ -132,26 +140,24 @@ const MatrixVideo = ({ data }) => {
             return 'Anc';
         };
 
-        const senders = normalize(data?.senders)
-            .map(s => ({ ...s, cat: getCategoryForFilter(s) }))
-            .filter(s => activeFilters[s.cat])
-            .sort(sortAlpha);
-
-        const receivers = normalize(data?.receivers)
-            .map(r => ({ ...r, cat: getCategoryForFilter(r) }))
-            .filter(r => activeFilters[r.cat])
-            .sort(sortAlpha);
-
-        return {
-            senders,
-            receivers,
+        const result = {
+            senders: normalize(data?.senders)
+                .map(s => ({ ...s, cat: getCategoryForFilter(s) }))
+                .filter(s => activeFilters[s.cat])
+                .sort(sortAlpha),
+            receivers: normalize(data?.receivers)
+                .map(r => ({ ...r, cat: getCategoryForFilter(r) }))
+                .filter(r => activeFilters[r.cat])
+                .sort(sortAlpha),
             devices: normalize(data?.devices),
         };
+
+        lastValidProcessed.current = result;
+        return result;
     }, [data, activeFilters]);
 
     /**
-     * Carica stato reale IS-05: receiver.$active.sender_id
-     * per mostrare le icone corrette.
+     * Carica stato reale IS-05 senza resettare lo stato ad ogni refresh
      */
     useEffect(() => {
         let cancelled = false;
@@ -160,10 +166,8 @@ const MatrixVideo = ({ data }) => {
         const loadActiveConnections = async () => {
             try {
                 const receivers = processed.receivers || [];
-                if (!receivers.length) {
-                    setConnections({});
-                    return;
-                }
+                // Se non abbiamo ancora receiver, non facciamo nulla invece di svuotare
+                if (receivers.length === 0) return;
 
                 const results = await Promise.all(
                     receivers.map(async r => {
@@ -173,9 +177,10 @@ const MatrixVideo = ({ data }) => {
                                 'receivers',
                                 { id: r.id }
                             );
-                            const senderId =
-                                resp?.data?.$active?.sender_id ?? null;
-                            return [r.id, senderId];
+                            return [
+                                r.id,
+                                resp?.data?.$active?.sender_id ?? null,
+                            ];
                         } catch {
                             return [r.id, null];
                         }
@@ -188,10 +193,11 @@ const MatrixVideo = ({ data }) => {
                 results.forEach(([rid, sid]) => {
                     map[rid] = sid;
                 });
+
+                // Aggiornamento atomico dello stato delle connessioni
                 setConnections(map);
             } catch (e) {
-                // eslint-disable-next-line no-console
-                console.warn('Impossibile leggere $active per i receiver:', e);
+                console.warn('Refresh connessioni fallito:', e);
             }
         };
 
@@ -201,16 +207,10 @@ const MatrixVideo = ({ data }) => {
         };
     }, [processed.receivers]);
 
-    /**
-     * Disconnect vendor-agnostico:
-     * - stage sender_id=null
-     * - activation immediate
-     */
     const disconnectReceiver = async receiverId => {
         const { data: receiver } = await dataProvider('GET_ONE', 'receivers', {
             id: receiverId,
         });
-
         const patchData = cloneDeep(receiver);
         set(patchData, '$staged.sender_id', null);
         set(patchData, '$staged.activation.mode', 'activate_immediate');
@@ -245,30 +245,13 @@ const MatrixVideo = ({ data }) => {
 
             await makeConnection(sender.id, receiver.id, 'active');
             notify('✅ Connessione attivata', 'info');
-
             refresh();
 
-            try {
-                const resp = await dataProvider('GET_ONE', 'receivers', {
-                    id: receiver.id,
-                });
-                const senderId = resp?.data?.$active?.sender_id ?? sender.id;
-                setConnections(prev => ({ ...prev, [receiver.id]: senderId }));
-            } catch {
-                setConnections(prev => ({ ...prev, [receiver.id]: sender.id }));
-            }
+            // Aggiornamento ottimistico locale per non aspettare il ciclo dei 5 secondi
+            setConnections(prev => ({ ...prev, [receiver.id]: sender.id }));
         } catch (error) {
             const body = error?.body;
-            if (body?.error) {
-                notify(
-                    `${body.error} - ${body.code} - ${body.debug}`,
-                    'warning'
-                );
-            } else {
-                notify(String(error?.message || error), 'warning');
-            }
-            // eslint-disable-next-line no-console
-            console.error('❌ Errore connect/disconnect:', error);
+            notify(body?.error || String(error?.message || error), 'warning');
         }
     };
 
@@ -277,16 +260,15 @@ const MatrixVideo = ({ data }) => {
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                height: 'calc(100vh - 64px)', // 64px ~ AppBar react-admin (aggiusta se serve)
-                minHeight: 0, // IMPORTANTISSIMO per permettere overflow nei figli
+                height: 'calc(100vh - 64px)',
+                minHeight: 0,
             }}
         >
-            {/* Toolbar filtri (resta “su”) */}
+            {/* Toolbar filtri */}
             <Box
                 style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'flex-start',
                     gap: 16,
                     paddingTop: 12,
                     paddingBottom: 12,
@@ -319,7 +301,7 @@ const MatrixVideo = ({ data }) => {
                 />
             </Box>
 
-            {/* Area scrollabile: la tabella scrolla qui dentro, non la pagina */}
+            {/* Area Matrix */}
             <Box style={{ flex: '1 1 auto', minHeight: 0 }}>
                 <MatrixBase
                     senders={processed.senders}

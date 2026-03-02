@@ -153,12 +153,6 @@ const MatrixBase = ({
                                             ? `1px solid ${nodeLineColor}`
                                             : 'none',
 
-                                        boxShadow: `
-                                            ${headerBottomLine},
-                                            ${!isLast ? `inset -1px 0 0 ${separatorColor}` : ''},
-                                            inset 0 -6px 12px rgba(0,0,0,0.15)
-                                        `,
-
                                         position: 'sticky',
                                         top: 0,
                                         zIndex: 90,
@@ -212,8 +206,6 @@ const MatrixBase = ({
                                     )
                                         ? `1px solid ${nodeLineColor}`
                                         : `1px solid ${gridLineColor}`,
-
-                                    boxShadow: `inset -1px 0 0 ${gridLineColor}`,
 
                                     position: 'sticky',
                                     top: cellSize,
